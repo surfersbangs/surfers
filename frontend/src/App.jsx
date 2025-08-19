@@ -1,12 +1,25 @@
 import { useState, useRef, useEffect } from "react";
+import {
+  onAuthStateChanged,
+  signOut,
+  signInWithPopup,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+} from "firebase/auth";
+import { auth, googleProvider } from "./firebase";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import "highlight.js/styles/github-dark-dimmed.css";
+
+// ====== Utility Container ======
 const Container = ({ children, className = "" }) => (
   <div className={`mx-auto ${className}`} style={{ width: "min(1120px, 90vw)" }}>
     {children}
   </div>
 );
 
-// ------- Inline SVG placeholders (swap with your assets when ready) -------
+// ====== Logos / Icons ======
 const LogoSmall = ({ className = "h-5 w-5" }) => (
   <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
     <circle cx="32" cy="32" r="30" fill="#2BA6FF" />
@@ -21,8 +34,13 @@ const ProfileIcon = ({ className = "h-5 w-5" }) => (
     <path d="M5 20c1.5-3.5 5-5 7-5s5.5 1.5 7 5" strokeWidth="1.5" />
   </svg>
 );
+const BackArrow = ({ className = "h-5 w-5" }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="#E5E7EB">
+    <path d="M15 6l-6 6 6 6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
-// small icons for popover
+// small icons
 const ImageIcon = ({ className = "h-4 w-4" }) => (
   <svg viewBox="0 0 20 20" className={className} fill="none" aria-hidden="true">
     <rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="#2B2B2B" />
@@ -40,57 +58,228 @@ const FigmaIcon = ({ className = "h-4 w-4" }) => (
   </svg>
 );
 
+// ====== Markdown with safe code highlighter ======
+function CodeBlock({ inline, className, children, ...props }) {
+  const codeRef = useRef(null);
+  const raw = Array.isArray(children) ? children.join("") : (children ?? "");
+  const lang = (className || "").replace("language-", "").trim();
+
+  useEffect(() => {
+    let mounted = true;
+    import("highlight.js")
+      .then((mod) => {
+        if (!mounted || !codeRef.current) return;
+        try {
+          const hljs = mod.default || mod;
+          if (lang && hljs.getLanguage && hljs.getLanguage(lang)) {
+            const { value } = hljs.highlight(raw, { language: lang });
+            codeRef.current.innerHTML = value;
+            codeRef.current.classList.add("hljs");
+          } else if (hljs.highlightAuto) {
+            const { value } = hljs.highlightAuto(raw);
+            codeRef.current.innerHTML = value;
+            codeRef.current.classList.add("hljs");
+          } else {
+            codeRef.current.textContent = raw;
+          }
+        } catch {
+          codeRef.current.textContent = raw;
+        }
+      })
+      .catch(() => {
+        if (codeRef.current) codeRef.current.textContent = raw;
+      });
+    return () => { mounted = false; };
+  }, [raw, lang]);
+
+  if (inline) {
+    return (
+      <code
+        className={`px-1.5 py-0.5 rounded bg-[#151517] border border-[#2A2A2A] ${className || ""}`}
+        {...props}
+      >
+        {raw}
+      </code>
+    );
+  }
+  return (
+    <pre className="mb-3 rounded-[12px] bg-[#0f0f10] border border-[#2A2A2A] overflow-x-auto">
+      <code ref={codeRef} className={`block p-3 ${className || ""}`} />
+    </pre>
+  );
+}
+
+function Markdown({ children }) {
+  const text = typeof children === "string" ? children : String(children ?? "");
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ node, ...props }) => (
+          <a
+            {...props}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-[#4b9fff] hover:opacity-90"
+          />
+        ),
+        p: ({ node, ...props }) => <p {...props} className="mb-3" />,
+        ul: ({ node, ...props }) => <ul {...props} className="list-disc pl-5 mb-3 space-y-1" />,
+        ol: ({ node, ...props }) => <ol {...props} className="list-decimal pl-5 mb-3 space-y-1" />,
+        li: ({ node, ...props }) => <li {...props} className="leading-6" />,
+        h1: ({ node, ...props }) => <h1 {...props} className="text-xl font-semibold mb-2 mt-3" />,
+        h2: ({ node, ...props }) => <h2 {...props} className="text-lg font-semibold mb-2 mt-3" />,
+        h3: ({ node, ...props }) => <h3 {...props} className="text-base font-semibold mb-2 mt-3" />,
+        blockquote: ({ node, ...props }) => (
+          <blockquote
+            {...props}
+            className="border-l-2 border-[#2A2A2A] pl-3 italic text-[#c7cbd2] mb-3"
+          />
+        ),
+        code: CodeBlock,
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+}
+
+// ====== MAIN APP ======
 export default function App() {
+  // ---- View routing ----
+  const [view, setView] = useState("home");
+
+  // ---- Prompt state (home) ----
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState("");
 
-  // attachments (shown INSIDE the pill)
+  // attachments (home)
   const [images, setImages] = useState([]);
   const [figmas, setFigmas] = useState([]);
   const [showAttach, setShowAttach] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+  // ---- Auth state ----
+  const [authOpen, setAuthOpen] = useState(false);
+  const [user, setUser] = useState(null);
 
-  // refs
+  // Phone OTP states
+  const [phone, setPhone] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [confirmation, setConfirmation] = useState(null);
+
+  // ---- Chat state ----
+  const [messages, setMessages] = useState([]); // {id, role, content}
+  const [chatInput, setChatInput] = useState("");
+
+  // streaming control (kept for future Stop button)
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamRef = useRef(null);
+
+  // chat attachments
+  const [chatImages, setChatImages] = useState([]);
+  const [chatFigmas, setChatFigmas] = useState([]);
+  const [showChatAttach, setShowChatAttach] = useState(false);
+
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => () => stopStreaming(), []);
+
+  const resetPhoneAuth = () => {
+    setPhone(""); setOtp(""); setOtpSent(false); setConfirmation(null);
+    if (window.recaptchaVerifier) { try { window.recaptchaVerifier.clear(); } catch {} window.recaptchaVerifier = null; }
+  };
+
+  const handleGoogleLogin = async () => {
+    try { await signInWithPopup(auth, googleProvider); resetPhoneAuth(); setAuthOpen(false); }
+    catch (err) { console.error(err); }
+  };
+  const handleLogout = async () => {
+    try { await signOut(auth); resetPhoneAuth(); setAuthOpen(false); }
+    catch (err) { console.error(err); }
+  };
+
+  const sendOtp = async () => {
+    try {
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+      }
+      const confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
+      setConfirmation(confirmationResult); setOtpSent(true);
+    } catch (err) {
+      console.error("OTP error:", err); alert("Failed to send OTP. Format: +91xxxxxxxxxx");
+    }
+  };
+  const verifyOtp = async () => {
+    try { if (confirmation) { await confirmation.confirm(otp); resetPhoneAuth(); setAuthOpen(false); } }
+    catch (err) { console.error("OTP verify error:", err); alert("Invalid OTP"); }
+  };
+
+  // refs (home)
   const formRef = useRef(null);
   const textareaRef = useRef(null);
   const attachRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // ===== cap textarea growth to N lines (ChatGPT style) =====
-  const LINE_HEIGHT_PX = 20; // matches leading-[20px]
-  const MAX_LINES = 7;       // change to 5–8 as you like
+  // refs (chat)
+  const chatFormRef = useRef(null);
+  const chatTextareaRef = useRef(null);
+  const chatAttachRef = useRef(null);
+  const chatFileInputRef = useRef(null);
+
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+
+  const LINE_HEIGHT_PX = 20;
+  const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
 
   const resizeTextarea = () => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "0px"; // reset
+    const el = textareaRef.current; if (!el) return;
+    el.style.height = "0px";
     const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
     el.style.height = next + "px";
     el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
   };
   useEffect(() => { resizeTextarea(); }, [prompt]);
 
-  // close popover on outside click / Esc
+  const resizeChatTextarea = () => {
+    const el = chatTextareaRef.current; if (!el) return;
+    el.style.height = "0px";
+    const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
+    el.style.height = next + "px";
+    el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
+  };
+  useEffect(() => { resizeChatTextarea(); }, [chatInput]);
+
   useEffect(() => {
     if (!showAttach) return;
     const onClick = (e) => { if (attachRef.current && !attachRef.current.contains(e.target)) setShowAttach(false); };
     const onEsc = (e) => { if (e.key === "Escape") setShowAttach(false); };
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onEsc);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onEsc);
-    };
+    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
   }, [showAttach]);
 
-  // add image flow
-  const onAddImageClick = () => {
-    fileInputRef.current?.click();
-    setShowAttach(false);
-  };
+  useEffect(() => {
+    if (!showChatAttach) return;
+    const onClick = (e) => { if (chatAttachRef.current && !chatAttachRef.current.contains(e.target)) setShowChatAttach(false); };
+    const onEsc = (e) => { if (e.key === "Escape") setShowChatAttach(false); };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
+  }, [showChatAttach]);
+
+  const onAddImageClick = () => { fileInputRef.current?.click(); setShowAttach(false); };
   const onFilesPicked = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -98,224 +287,376 @@ export default function App() {
     setImages((prev) => [...prev, ...previews]);
     e.target.value = "";
   };
-
-  // add figma flow
   const onAddFigmaClick = () => {
-    const url = window.prompt("Paste Figma link:");
-    if (!url) return;
+    const url = window.prompt("Paste Figma link:"); if (!url) return;
     const ok = /figma\.com\/(file|design)\//i.test(url);
     if (!ok) { alert("That doesn't look like a Figma file link."); return; }
-    setFigmas((prev) => [...prev, url]);
-    setShowAttach(false);
+    setFigmas((prev) => [...prev, url]); setShowAttach(false);
   };
-
-  // remove attachment
   const removeImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
   const removeFigma = (i) => setFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
-  // submit to backend
-  async function onSubmit(e) {
-    e.preventDefault();
-    if (!prompt.trim()) return;
+  const onAddImageClickChat = () => { chatFileInputRef.current?.click(); setShowChatAttach(false); };
+  const onFilesPickedChat = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const previews = files.map((f) => ({ file: f, url: URL.createObjectURL(f), name: f.name }));
+    setChatImages((prev) => [...prev, ...previews]);
+    e.target.value = "";
+  };
+  const onAddFigmaClickChat = () => {
+    const url = window.prompt("Paste Figma link:"); if (!url) return;
+    const ok = /figma\.com\/(file|design)\//i.test(url);
+    if (!ok) { alert("That doesn't look like a Figma file link."); return; }
+    setChatFigmas((prev) => [...prev, url]); setShowChatAttach(false);
+  };
+  const removeChatImage = (i) => setChatImages((prev) => prev.filter((_, idx) => idx !== i));
+  const removeChatFigma = (i) => setChatFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
-    setLoading(true);
-    setCode("");
+  // streaming helpers
+  const addAssistantPlaceholder = () => {
+    const id = Date.now() + Math.random();
+    setMessages((prev) => [...prev, { id, role: "assistant", content: "" }]);
+    return id;
+  };
+  const appendToAssistant = (id, chunk) => {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: (m.content || "") + (chunk || "") } : m)));
+  };
+
+  const stopStreaming = () => {
+    try { streamRef.current?.close?.(); } catch {}
+    streamRef.current = null;
+    setIsStreaming(false);
+  };
+
+  // non-stream fallback
+  async function sendMessage(text) {
+    const id = Date.now();
+    setMessages((prev) => [...prev, { id, role: "user", content: text }]);
     try {
-      // TODO: include images/figmas in payload when backend supports it
       const res = await fetch(`${API_URL}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          prompt: text,
+          history: messages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
+        }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setCode(data.code || "");
+      const reply = data.reply || data.code || "";
+      setMessages((prev) => [...prev, { id: id + 1, role: "assistant", content: reply || "…" }]);
     } catch (err) {
-      setCode(`// Error: ${String(err)}`);
-    } finally {
-      setLoading(false);
+      setMessages((prev) => [...prev, { id: id + 1, role: "assistant", content: `// Error: ${String(err)}` }]);
     }
   }
 
+  // streaming (EventSource)
+  async function sendMessageStream(text) {
+    const userId = Date.now();
+    setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
+
+    const asstId = addAssistantPlaceholder();
+
+    const hist = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
+    const url =
+      `${API_URL}/api/stream-es?` +
+      `prompt=${encodeURIComponent(text)}` +
+      `&history=${encodeURIComponent(JSON.stringify(hist))}`;
+
+    try { streamRef.current?.close?.(); } catch {}
+    const es = new EventSource(url, { withCredentials: false });
+    streamRef.current = es;
+    setIsStreaming(true);
+
+    let gotAny = false;
+    const timer = setTimeout(() => {
+      if (!gotAny) appendToAssistant(asstId, `\n// no data yet — check Network tab for /api/stream-es`);
+    }, 15000);
+
+    es.onmessage = (ev) => {
+      gotAny = true;
+      if (ev.data === "[DONE]") {
+        clearTimeout(timer);
+        stopStreaming();
+        return;
+      }
+      try {
+        const json = JSON.parse(ev.data);
+        if (json.status === "started") return;
+        if (json.token) appendToAssistant(asstId, json.token);
+        if (json.error) appendToAssistant(asstId, `\n// ${json.error}`);
+      } catch {}
+    };
+
+    es.onerror = () => {
+      clearTimeout(timer);
+      appendToAssistant(asstId, `\n// stream error (EventSource)`);
+      stopStreaming();
+    };
+  }
+
+  // HOME SUBMIT
+  async function onSubmit(e) {
+    e.preventDefault();
+    if (!prompt.trim()) return;
+    const first = prompt.trim();
+    setPrompt(""); setImages([]); setFigmas([]);
+    setView("chat");
+    setTimeout(() => sendMessageStream(first), 0);
+  }
+
+  // CHAT SEND
+  const sendFromChat = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    const txt = chatInput.trim();
+    setChatInput(""); setChatImages([]); setChatFigmas([]);
+    sendMessageStream(txt);
+  };
+
   return (
     <div className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col">
-      {/* ===== NAV ===== */}
-      <header className="pt-4">
-        <Container>
-          <div className="relative h-[28px] flex items-center">
-            <LogoSmall className="h-[18px] w-[18px]" />
-            <nav className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex gap-[36px] text-[14px] leading-[20px] text-[#D1D5DB]">
-              <a href="#" className="hover:text-[#A8ADB5]">community</a>
-              <a href="#" className="hover:text-[#A8ADB5]">developers</a>
-            </nav>
-            <div className="ml-auto">
-              <ProfileIcon className="h-[18px] w-[18px]" />
-            </div>
-          </div>
-        </Container>
-      </header>
-
-      {/* ===== HERO ===== */}
-      <main className="flex-1">
-        <Container className="flex flex-col items-center">
-          <div className="h-[120px]" />
-          <LogoLarge className="h-[88px] w-[88px]" />
-          <div className="h-[28px]" />
-
-          {/* Form wraps the pill so ↑ submits */}
-          <form ref={formRef} onSubmit={onSubmit} className="w-[720px] max-w-[90vw]">
-            <div className="relative bg-[#121214] border border-[#2A2A2A] rounded-[28px] px-[22px] pt-[14px] pb-[44px] shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
-              {/* ---------- ATTACHMENTS (inside the pill) ---------- */}
-              {(images.length > 0 || figmas.length > 0) && (
-                <div className="mb-2 flex flex-wrap gap-2">
-                  {images.map((img, i) => (
-                    <div
-                      key={`img-${i}`}
-                      className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]"
-                    >
-                      <img src={img.url} alt={img.name} className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(i)}
-                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] leading-[20px] flex items-center justify-center"
-                        title="remove"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  {figmas.map((url, i) => (
-                    <div
-                      key={`fig-${i}`}
-                      className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]"
-                      title={url}
-                    >
-                      <FigmaIcon />
-                      <span className="max-w-[180px] truncate">{url}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFigma(i)}
-                        className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] leading-[20px] flex items-center justify-center"
-                        title="remove"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* ---------- Editable prompt line (auto-expands w/ cap) ---------- */}
-              <textarea
-                ref={textareaRef}
-                rows={1}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onInput={resizeTextarea}
-                onKeyDown={(e) => {
-                  // Enter to send; Shift+Enter for newline
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    formRef.current?.requestSubmit();
-                  }
-                }}
-                placeholder="build fast. for nothing."
-                className="w-full bg-transparent outline-none
-                           text-[14px] leading-[20px]
-                           placeholder:text-[#9AA0A6] text-[#EDEDED]
-                           resize-none"
-                style={{
-                  maxHeight: `${MAX_TA_HEIGHT}px`,
-                  overflowY: "hidden",
-                }}
-              />
-
-              {/* ---------- Bottom controls (plus + send) ---------- */}
-              <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
-                <div className="relative" ref={attachRef}>
-                  <button
-                    type="button"
-                    aria-label="add"
-                    onClick={() => setShowAttach((v) => !v)}
-                    className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors"
-                  >
-                    +
-                  </button>
-
-                  {showAttach && (
-                    <div
-                      className="
-                        absolute -top-2 left-0 -translate-y-full
-                        w-[180px] rounded-[12px] bg-white text-black
-                        border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.15)]
-                        p-2
-                      "
-                    >
-                      <button
-                        type="button"
-                        onClick={onAddImageClick}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
-                      >
-                        <ImageIcon />
-                        <span className="text-[14px] text-neutral-800">add image</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={onAddFigmaClick}
-                        className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
-                      >
-                        <FigmaIcon />
-                        <span className="text-[14px] text-neutral-800">add figma</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  aria-label="send"
-                  disabled={loading}
-                  className={`h-[28px] w-[28px] rounded-full ${
-                    loading ? "bg-[#2A2A2B] text-[#9AA0A6]" : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"
-                  } flex items-center justify-center transition-colors`}
-                  title={loading ? "Generating…" : "Send"}
-                >
-                  {loading ? "…" : "↑"}
-                </button>
+      {/* ===== TOP BAR (home) ===== */}
+      {view === "home" && (
+        <header className="pt-4">
+          <Container>
+            <div className="relative h-[28px] flex items-center">
+              <LogoSmall className="h-[18px] w-[18px]" />
+              <nav className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex gap-[36px] text-[14px] leading-[20px] text-[#D1D5DB]">
+                <a href="#" className="hover:text-[#A8ADB5]">community</a>
+                <a href="#" className="hover:text-[#A8ADB5]">developers</a>
+              </nav>
+              <div className="ml-auto cursor-pointer" onClick={() => { resetPhoneAuth(); setAuthOpen(true); }}>
+                <ProfileIcon className="h-[20px] w-[20px]" />
               </div>
             </div>
+          </Container>
+        </header>
+      )}
 
-            {/* hidden input for image selection */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={onFilesPicked}
-            />
-          </form>
+      {/* ===== HOME ===== */}
+      {view === "home" && (
+        <main className="flex-1">
+          <Container className="flex flex-col items-center justify-center min-h-[72vh]">
+            <LogoLarge className="h-[88px] w-[88px] mb-6" />
+            <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-[560px] mx-auto">
+              <div className="relative bg-[#121214] border-[0.5px] border-[#2A2A2A] rounded-[28px] px-[18px] pt-[12px] pb-[40px] shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
+                {(images.length > 0 || figmas.length > 0) && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {images.map((img, i) => (
+                      <div key={`img-${i}`} className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]">
+                        <img src={img.url} alt={img.name} className="h-full w-full object-cover" />
+                        <button type="button" onClick={() => removeImage(i)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center">×</button>
+                      </div>
+                    ))}
+                    {figmas.map((url, i) => (
+                      <div key={`fig-${i}`} className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]" title={url}>
+                        <FigmaIcon />
+                        <span className="max-w-[180px] truncate">{url}</span>
+                        <button type="button" onClick={() => removeFigma(i)} className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] flex items-center justify-center">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-          {/* Debug: returned code */}
-          {code ? (
-            <div className="w-[720px] max-w-[90vw] mt-4">
-              <pre className="whitespace-pre-wrap text-[12px] leading-5 text-[#C9D1D9] bg-[#111214] border border-[#2A2A2A] rounded-[12px] p-4 overflow-x-auto">
-                {code}
-              </pre>
-            </div>
-          ) : null}
-        </Container>
-      </main>
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onInput={resizeTextarea}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); formRef.current?.requestSubmit(); } }}
+                  placeholder="build fast. for nothing."
+                  className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
+                  style={{ maxHeight: `${MAX_TA_HEIGHT}px`, overflowY: "hidden" }}
+                />
 
-      {/* ===== LEGAL ===== */}
-      <footer className="pb-[22px]">
-        <Container>
-          <p className="mx-auto text-center text-[12px] leading-[18px] text-[#9AA0A6]">
-            privacy policy  •  terms &amp; use  •  type it. see it. launch it. —— your ideas live in seconds.
-            surfers codes anything better. faster.  •  2025 © surfers.
-          </p>
-        </Container>
-      </footer>
+                <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
+                  <div className="relative" ref={attachRef}>
+                    <button type="button" aria-label="add" onClick={() => setShowAttach((v) => !v)} className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors">+</button>
+                    {showAttach && (
+                      <div className="absolute -top-2 left-0 -translate-y-full w-[180px] rounded-[12px] bg-white text-black border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-2">
+                        <button type="button" onClick={onAddImageClick} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100">
+                          <ImageIcon /> <span className="text-[14px] text-neutral-800">add image</span>
+                        </button>
+                        <button type="button" onClick={onAddFigmaClick} className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100">
+                          <FigmaIcon /> <span className="text-[14px] text-neutral-800">add figma</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <button type="submit" aria-label="send" disabled={loading} className={`h-[28px] w-[28px] rounded-full ${loading ? "bg-[#2A2A2B] text-[#9AA0A6]" : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"} flex items-center justify-center transition-colors`}>
+                    {loading ? "…" : "↑"}
+                  </button>
+                </div>
+              </div>
+
+              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={onFilesPicked} />
+            </form>
+
+            {code ? (
+              <div className="w-full max-w-[560px] mt-4">
+                <pre className="whitespace-pre-wrap text-[12px] leading-5 text-[#C9D1D9] bg-[#111214] border border-[#2A2A2A] rounded-[12px] p-4 overflow-x-auto">
+                  {code}
+                </pre>
+              </div>
+            ) : null}
+          </Container>
+        </main>
+      )}
+
+      {/* ===== CHAT PAGE ===== */}
+      {view === "chat" && (
+        <>
+          <header className="pt-4">
+            <Container>
+              <div className="relative h-[28px] flex items-center">
+                <button onClick={() => setView("home")} className="mr-2"><BackArrow className="h-[18px] w-[18px]" /></button>
+                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"><LogoSmall className="h-[18px] w-[18px]" /></div>
+                <div className="ml-auto cursor-pointer" onClick={() => { resetPhoneAuth(); setAuthOpen(true); }}>
+                  <ProfileIcon className="h-[18px] w-[18px]" />
+                </div>
+              </div>
+            </Container>
+          </header>
+
+          <main className="flex-1">
+            <Container className="pt-8 pb-40">
+              {messages.map((m) => (
+                <div key={m.id} className={`mb-4 flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${m.role === "user" ? "bg-[#1A1A1B] text-[#EDEDED]" : "bg-transparent text-[#EDEDED]"}`} style={{ overflowWrap: "anywhere" }}>
+                    {m.role === "assistant" ? <Markdown>{m.content || ""}</Markdown> : <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </Container>
+          </main>
+
+          <div className="fixed left-0 right-0 bottom-0 bg-gradient-to-t from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6">
+            <Container>
+              <form ref={chatFormRef} onSubmit={sendFromChat} className="w-full max-w-[560px] mx-auto">
+                <div className="relative bg-[#121214] border-[0.5px] border-[#2A2A2A] rounded-[28px] px-[18px] pt-[12px] pb-[40px] shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
+                  {(chatImages.length > 0 || chatFigmas.length > 0) && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {chatImages.map((img, i) => (
+                        <div key={`cimg-${i}`} className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]">
+                          <img src={img.url} alt={img.name} className="h-full w-full object-cover" />
+                          <button type="button" onClick={() => removeChatImage(i)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center">×</button>
+                        </div>
+                      ))}
+                      {chatFigmas.map((url, i) => (
+                        <div key={`cfig-${i}`} className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]" title={url}>
+                          <FigmaIcon />
+                          <span className="max-w-[180px] truncate">{url}</span>
+                          <button type="button" onClick={() => removeChatFigma(i)} className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] flex items-center justify-center">×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <textarea
+                    ref={chatTextareaRef}
+                    rows={1}
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onInput={resizeChatTextarea}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); chatFormRef.current?.requestSubmit(); } }}
+                    placeholder="build fast. for nothing."
+                    className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
+                    style={{ maxHeight: `${MAX_TA_HEIGHT}px`, overflowY: "hidden" }}
+                  />
+
+                  <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
+                    <div className="relative" ref={chatAttachRef}>
+                      <button type="button" aria-label="add" onClick={() => setShowChatAttach((v) => !v)} className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors">+</button>
+                      {showChatAttach && (
+                        <div className="absolute -top-2 left-0 -translate-y-full w-[180px] rounded-[12px] bg-white text-black border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-2">
+                          <button type="button" onClick={onAddImageClickChat} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100">
+                            <ImageIcon /> <span className="text-[14px] text-neutral-800">add image</span>
+                          </button>
+                          <button type="button" onClick={onAddFigmaClickChat} className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100">
+                            <FigmaIcon /> <span className="text-[14px] text-neutral-800">add figma</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <button type="submit" className="h-[28px] w-[28px] rounded-full bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2] flex items-center justify-center transition-colors" aria-label="send">
+                      ↑
+                    </button>
+                  </div>
+                </div>
+
+                <input ref={chatFileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={onFilesPickedChat} />
+              </form>
+            </Container>
+          </div>
+        </>
+      )}
+
+      {view === "home" && (
+        <footer className="pb-[22px]">
+          <Container>
+            <p className="mx-auto text-center text-[12px] leading-[18px] text-[#9AA0A6]">
+              privacy policy  •  terms &amp; use  •  type it. see it. launch it. —— your ideas live in seconds.
+              surfers codes anything better. faster.  •  2025 © surfers.
+            </p>
+          </Container>
+        </footer>
+      )}
+
+      {authOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-90 z-50">
+          <div className="w-[400px] text-center p-8 rounded-xl bg-black border border-gray-800">
+            <h1 className="text-3xl font-bold">account.</h1>
+            <p className="text-gray-400 mb-6">create or log in.</p>
+
+            {user ? (
+              <>
+                <p className="mb-4">Welcome, {user.displayName || user.phoneNumber || user.email}</p>
+                <button onClick={handleLogout} className="w-full py-2 bg-[#FFFFFF] text-[#191919] font-medium rounded-lg">Logout</button>
+              </>
+            ) : (
+              <>
+                <button onClick={handleGoogleLogin} className="bg-[#1a73e8] text-white font-medium w-full py-2 rounded-lg flex items-center justify-center gap-2">
+                  <span className="font-bold">G</span> continue with Google
+                </button>
+
+                <div className="my-4 flex items-center">
+                  <div className="flex-grow border-t border-gray-600"></div>
+                  <span className="px-2 text-gray-400">or</span>
+                  <div className="flex-grow border-t border-gray-600"></div>
+                </div>
+
+                {!otpSent ? (
+                  <>
+                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button onClick={sendOtp} className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg">send OTP</button>
+                  </>
+                ) : (
+                  <>
+                    <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="enter OTP" className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button onClick={verifyOtp} className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg">verify OTP</button>
+                  </>
+                )}
+              </>
+            )}
+
+            <div id="recaptcha-container"></div>
+
+            <p className="text-gray-400 text-xs mt-6">
+              privacy policy • terms &amp; use • type it. see it. launch it.<br />
+              your ideas live in seconds. surfers codes anything better. faster.<br />
+              © 2025 surfers
+            </p>
+
+            <button onClick={() => { resetPhoneAuth(); setAuthOpen(false); }} className="mt-4 text-sm text-gray-400 underline">close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

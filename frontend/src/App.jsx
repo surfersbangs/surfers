@@ -57,6 +57,18 @@ const FigmaIcon = ({ className = "h-4 w-4" }) => (
     <path d="M9 12a3 3 0 100-6 3 3 0 000 6z" fill="#A259FF" />
   </svg>
 );
+// loader
+const Spinner = ({ className = "h-4 w-4" }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <g fill="none" stroke="#C8CCD2" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" opacity="0.25" />
+      <path d="M21 12a9 9 0 0 0-9-9">
+        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite" />
+      </path>
+    </g>
+  </svg>
+);
+
 
 // ====== Markdown with safe code highlighter ======
 function CodeBlock({ inline, className, children, ...props }) {
@@ -175,6 +187,10 @@ export default function App() {
 
   // streaming control (kept for future Stop button)
   const [isStreaming, setIsStreaming] = useState(false);
+  const [phase, setPhase] = useState(null); // 'connecting' | 'thinking' | 'generating' | 'coding' | null
+  const atBottomRef = useRef(true);          // live flag: are we near the bottom?
+const [showJump, setShowJump] = useState(false); // show "jump to latest" button
+
   const streamRef = useRef(null);
 
   // chat attachments
@@ -183,17 +199,59 @@ export default function App() {
   const [showChatAttach, setShowChatAttach] = useState(false);
 
   const chatEndRef = useRef(null);
+  const scrollRaf = useRef(0);
+
+  // Just the effect (no const declarations here)
+useEffect(() => {
+  if (!chatEndRef.current) return;
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      const nearBottom = entry.isIntersecting;
+      atBottomRef.current = nearBottom;
+      setShowJump(!nearBottom);
+    },
+    {
+      root: null,
+      threshold: 0.01,
+      rootMargin: "0px 0px -96px 0px",
+    }
+  );
+  observer.observe(chatEndRef.current);
+  return () => observer.disconnect();
+}, []);
+
+  
+  
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+useEffect(() => {
+  if (!atBottomRef.current) {
+    setShowJump(true);
+    return; // don't move the viewport if user isn't at bottom
+  }
+  if (scrollRaf.current) return; // already scheduled this frame
+
+  scrollRaf.current = requestAnimationFrame(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
+    scrollRaf.current = 0;
+  });
+}, [messages, isStreaming]);
+
 
   useEffect(() => () => stopStreaming(), []);
+  
+
+  // Stop any active EventSource when navigating away from chat
+useEffect(() => {
+  if (view === "home") {
+    stopStreaming();
+  }
+}, [view]);
+
 
   const resetPhoneAuth = () => {
     setPhone(""); setOtp(""); setOtpSent(false); setConfirmation(null);
@@ -243,22 +301,24 @@ export default function App() {
   const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
 
-  const resizeTextarea = () => {
-    const el = textareaRef.current; if (!el) return;
-    el.style.height = "0px";
-    const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
-    el.style.height = next + "px";
-    el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
-  };
+    const resizeTextarea = () => {
+  const el = textareaRef.current; if (!el) return;
+  el.style.height = "auto";
+  const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
+  el.style.height = next + "px";
+  el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
+};
+
   useEffect(() => { resizeTextarea(); }, [prompt]);
 
   const resizeChatTextarea = () => {
-    const el = chatTextareaRef.current; if (!el) return;
-    el.style.height = "0px";
-    const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
-    el.style.height = next + "px";
-    el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
-  };
+  const el = chatTextareaRef.current; if (!el) return;
+  el.style.height = "auto";
+  const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
+  el.style.height = next + "px";
+  el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
+};
+
   useEffect(() => { resizeChatTextarea(); }, [chatInput]);
 
   useEffect(() => {
@@ -324,10 +384,12 @@ export default function App() {
   };
 
   const stopStreaming = () => {
-    try { streamRef.current?.close?.(); } catch {}
-    streamRef.current = null;
-    setIsStreaming(false);
-  };
+  try { streamRef.current?.close?.(); } catch {}
+  streamRef.current = null;
+  setIsStreaming(false);
+  setPhase(null);
+};
+
 
   // non-stream fallback
   async function sendMessage(text) {
@@ -357,6 +419,10 @@ export default function App() {
     setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
 
     const asstId = addAssistantPlaceholder();
+  
+
+    setPhase('connecting');
+
 
     const hist = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
     const url =
@@ -369,25 +435,57 @@ export default function App() {
     streamRef.current = es;
     setIsStreaming(true);
 
-    let gotAny = false;
-    const timer = setTimeout(() => {
-      if (!gotAny) appendToAssistant(asstId, `\n// no data yet — check Network tab for /api/stream-es`);
-    }, 15000);
+   let gotAny = false;
+let sawCode = false;
 
-    es.onmessage = (ev) => {
+const timer = setTimeout(() => {
+  if (!gotAny) appendToAssistant(asstId, `\n// no data yet — check Network tab for /api/stream-es`);
+}, 15000);
+
+es.onmessage = (ev) => {
+  if (ev.data === "[DONE]") {
+    clearTimeout(timer);
+    setPhase(null);           // finished
+    stopStreaming();
+    return;
+  }
+  try {
+    const json = JSON.parse(ev.data);
+    if (json.status === "started") {
+      setPhase('thinking');   // backend said it's started
+      return;
+    }
+    if (json.token) {
+      if (!gotAny) setPhase('generating'); // first visible token
       gotAny = true;
-      if (ev.data === "[DONE]") {
-        clearTimeout(timer);
-        stopStreaming();
-        return;
+
+      // crude detection of code-writing phase
+      if (!sawCode && (/```/.test(json.token) || /\b(import|class|def|function|const|let|var)\b/.test(json.token))) {
+        setPhase('coding');
+        sawCode = true;
       }
-      try {
-        const json = JSON.parse(ev.data);
-        if (json.status === "started") return;
-        if (json.token) appendToAssistant(asstId, json.token);
-        if (json.error) appendToAssistant(asstId, `\n// ${json.error}`);
-      } catch {}
-    };
+
+      appendToAssistant(asstId, json.token);
+    }
+    if (json.error) {
+      appendToAssistant(asstId, `\n// ${json.error}`);
+      setPhase(null);
+    }
+  } catch {
+    // raw text chunk fallback
+    if (!gotAny) setPhase('generating');
+    gotAny = true;
+    appendToAssistant(asstId, ev.data || "");
+  }
+};
+
+es.onerror = () => {
+  clearTimeout(timer);
+  appendToAssistant(asstId, `\n// stream error (EventSource)`);
+  setPhase(null);
+  stopStreaming();
+};
+
 
     es.onerror = () => {
       clearTimeout(timer);
@@ -513,7 +611,9 @@ export default function App() {
           <header className="pt-4">
             <Container>
               <div className="relative h-[28px] flex items-center">
-                <button onClick={() => setView("home")} className="mr-2"><BackArrow className="h-[18px] w-[18px]" /></button>
+               <button onClick={() => { stopStreaming(); setPhase(null); setView("home"); }} className="mr-2">
+
+<BackArrow className="h-[18px] w-[18px]" /></button>
                 <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"><LogoSmall className="h-[18px] w-[18px]" /></div>
                 <div className="ml-auto cursor-pointer" onClick={() => { resetPhoneAuth(); setAuthOpen(true); }}>
                   <ProfileIcon className="h-[18px] w-[18px]" />
@@ -524,16 +624,46 @@ export default function App() {
 
           <main className="flex-1">
             <Container className="pt-8 pb-40">
-              {messages.map((m) => (
-                <div key={m.id} className={`mb-4 flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${m.role === "user" ? "bg-[#1A1A1B] text-[#EDEDED]" : "bg-transparent text-[#EDEDED]"}`} style={{ overflowWrap: "anywhere" }}>
-                    {m.role === "assistant" ? <Markdown>{m.content || ""}</Markdown> : <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>}
-                  </div>
-                </div>
-              ))}
+             
+
+              {messages.map((m) => {
+  const isAssistant = m.role === "assistant";
+  const hasContent = (m.content ?? "").trim() !== "";
+
+  return (
+    <div key={m.id} className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}>
+      <div
+        className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${isAssistant ? "bg-transparent text-[#EDEDED]" : "bg-[#1A1A1B] text-[#EDEDED]"}`}
+        style={{ overflowWrap: "anywhere" }}
+      >
+        {isAssistant ? (
+          hasContent ? (
+            <Markdown>{m.content}</Markdown>
+          ) : isStreaming ? (
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]"
+              aria-live="polite"
+            >
+              <Spinner />
+              <span>
+                {phase === "thinking" ? "thinking…" : phase === "coding" ? "writing code…" : "writing…"}
+              </span>
+            </div>
+          ) : null
+        ) : (
+          <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+        )}
+      </div>
+    </div>
+  );
+})}
+
               <div ref={chatEndRef} />
             </Container>
           </main>
+          
+
+          
 
           <div className="fixed left-0 right-0 bottom-0 bg-gradient-to-t from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6">
             <Container>

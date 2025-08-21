@@ -16,18 +16,100 @@ const openai = new OpenAI({
   baseURL: 'https://api.deepseek.com',
 });
 
-// --- health ---
+// ---------- utils ----------
+function trimHistory(history = [], keepPairs = 4, charCap = 12000) {
+  // keep the last N user/assistant pairs
+  const compact = [];
+  for (let i = history.length - 1; i >= 0 && compact.length < keepPairs * 2; i--) {
+    compact.unshift({ role: history[i].role, content: history[i].content ?? '' });
+  }
+  // hard cap by characters
+  let total = 0;
+  const capped = [];
+  for (let i = compact.length - 1; i >= 0; i--) {
+    const msg = compact[i];
+    const len = (msg.content || '').length;
+    if (total + len > charCap) break;
+    capped.unshift(msg);
+    total += len;
+  }
+  return capped;
+}
+
+function initSSE(req, res) {
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Nginx: don't buffer
+  if (res.flushHeaders) res.flushHeaders();
+
+  // never auto-timeout the socket
+  try { req.setTimeout(0); } catch {}
+  try { res.setTimeout(0); } catch {}
+
+  let clientClosed = false;
+  const hb = setInterval(() => {
+    if (clientClosed) return;
+    try { res.write(': ping\n\n'); } catch {}
+  }, 15000);
+
+  req.on('close', () => {
+    clientClosed = true;
+    clearInterval(hb);
+  });
+
+  return {
+    isClosed: () => clientClosed,
+    stop: () => clearInterval(hb),
+  };
+}
+
+// Stream one completion; write tokens; return finishReason
+async function streamOneCompletion({ model, messages, temperature = 0.2, max_tokens = 4096, write, sse }) {
+
+  const stream = await openai.chat.completions.create({
+    model,
+    messages,
+    temperature,
+    stream: true,
+    max_tokens, // explicit high cap
+    // no "stop" here to avoid cutting code
+  });
+
+  let finishReason = null;
+  for await (const chunk of stream) {
+  if (sse?.isClosed && sse.isClosed()) {
+    // client gone -> stop consuming stream
+    stream.controller?.abort?.();
+    break;
+  }
+  const choice = chunk?.choices?.[0];
+  const token = choice?.delta?.content;
+  if (token) write(token);
+  if (choice?.finish_reason) finishReason = choice.finish_reason; // e.g., "length", "stop"
+}
+
+// if client closed during stream, signal caller to bail out
+if (sse?.isClosed && sse.isClosed()) {
+  return finishReason || 'client_closed';
+}
+return finishReason;
+
+}
+
+// ---------- health ----------
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// --- non-streaming ---
+// ---------- non-streaming ----------
 app.post('/api/generate', async (req, res) => {
   try {
     const { prompt, history = [] } = req.body || {};
     if (!prompt?.trim()) return res.status(400).json({ error: 'Missing prompt' });
 
+    const trimmed = trimHistory(history, 6, 16000);
     const messages = [
       { role: 'system', content: 'You are a concise, helpful coding assistant.' },
-      ...history.slice(-12).map(m => ({ role: m.role, content: m.content })),
+      ...trimmed,
       { role: 'user', content: prompt.trim() },
     ];
 
@@ -35,8 +117,9 @@ app.post('/api/generate', async (req, res) => {
       model: 'deepseek-chat',
       messages,
       temperature: 0.2,
-      max_tokens: 800,
+      max_tokens: 4096, // keep explicit
     });
+
     const reply = completion.choices?.[0]?.message?.content?.trim() || '';
     res.json({ reply });
   } catch (err) {
@@ -49,50 +132,57 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
-// --- streaming via POST (keep for fetch-based clients) ---
+// ---------- streaming via POST (fetch clients) ----------
 app.post('/api/stream', async (req, res) => {
   try {
     const { prompt, history = [], model } = req.body || {};
     if (!prompt?.trim()) return res.status(400).end();
 
-    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    if (res.flushHeaders) res.flushHeaders();
-
-    const hb = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
-    let clientClosed = false;
-    req.on('close', () => { clientClosed = true; clearInterval(hb); });
-
+    const sse = initSSE(req, res);
     res.write(': connected\n\n');
     res.write(`data: ${JSON.stringify({ status: 'started' })}\n\n`);
 
-    const messages = [
+    const trimmed = trimHistory(history, 6, 16000);
+    const baseMessages = [
       { role: 'system', content: 'You are a concise, helpful coding assistant.' },
-      ...history.slice(-12).map(m => ({ role: m.role, content: m.content })),
+      ...trimmed,
       { role: 'user', content: prompt.trim() },
     ];
 
-    console.log('[stream-POST] prompt len:', prompt.length, 'hist:', history.length);
+    const write = (text) => { if (!sse.isClosed()) res.write(`data: ${JSON.stringify({ token: text })}\n\n`); };
 
-    const stream = await openai.chat.completions.create({
-      model: model || 'deepseek-chat',
-      messages,
-      temperature: 0.2,
-      max_tokens: 800,
-      stream: true,
-    });
+    let loops = 0;
+    const MAX_LOOPS = 5; // up to 5 auto-continues
+    let messages = baseMessages;
+    const useModel = model || 'deepseek-chat';
 
-    for await (const chunk of stream) {
-      if (clientClosed) break;
-      const token = chunk?.choices?.[0]?.delta?.content;
-      if (token) res.write(`data: ${JSON.stringify({ token })}\n\n`);
+    while (!sse.isClosed() && loops++ < MAX_LOOPS) {
+      const finish = await streamOneCompletion({
+        model: useModel,
+        messages,
+        temperature: 0.2,
+        max_tokens: 4096,
+        write,
+        sse,   // pass sse here
+      });
+
+      if (finish === 'length') {
+        // auto-continue
+        messages = [
+          ...messages,
+          { role: 'assistant', content: '(continuing...)' },
+          { role: 'user', content: 'Continue exactly from where you stopped. Do not repeat earlier lines; only new code.' },
+        ];
+        continue;
+      }
+      break; // finished naturally or stopped
     }
 
-    if (!clientClosed) { res.write('data: [DONE]\n\n'); res.end(); }
-    clearInterval(hb);
-    console.log('[stream-POST] done');
+    if (!sse.isClosed()) {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+    sse.stop();
   } catch (err) {
     const status = err?.status || err?.response?.status || 500;
     const detail = err?.response?.data || err?.message || 'DeepSeek stream failed';
@@ -105,54 +195,66 @@ app.post('/api/stream', async (req, res) => {
   }
 });
 
-// --- streaming via GET for EventSource (no fetch/body gotchas) ---
+// ---------- streaming via GET for EventSource ----------
 app.get('/api/stream-es', async (req, res) => {
   try {
     const prompt = `${req.query.prompt || ''}`;
-    const histParam = `${req.query.history || '[]'}`; // URL-encoded JSON
+    const histParam = `${req.query.history || '[]'}`; // URL-encoded JSON from client
     if (!prompt.trim()) return res.status(400).end();
 
-    // decode history
     let history = [];
-    try { history = JSON.parse(decodeURIComponent(histParam)); } catch {}
+    try { history = JSON.parse(decodeURIComponent(histParam)); } catch {
+      try { history = JSON.parse(histParam); } catch {}
+    }
 
-    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    if (res.flushHeaders) res.flushHeaders();
-
-    const hb = setInterval(() => { try { res.write(': ping\n\n'); } catch {} }, 15000);
-    let clientClosed = false;
-    req.on('close', () => { clientClosed = true; clearInterval(hb); });
-
+    const sse = initSSE(req, res);
     res.write(': connected\n\n');
     res.write(`data: ${JSON.stringify({ status: 'started' })}\n\n`);
 
-    const messages = [
+    const trimmed = trimHistory(history, 6, 16000);
+    const baseMessages = [
       { role: 'system', content: 'You are a concise, helpful coding assistant.' },
-      ...history.slice(-12).map(m => ({ role: m.role, content: m.content })),
+      ...trimmed,
       { role: 'user', content: prompt.trim() },
     ];
 
+    const write = (text) => { if (!sse.isClosed()) res.write(`data: ${JSON.stringify({ token: text })}\n\n`); };
+
+    let loops = 0;
+    const MAX_LOOPS = 5;
+    let messages = baseMessages;
+    const useModel = 'deepseek-chat';
+
     console.log('[stream-GET] prompt len:', prompt.length, 'hist:', history.length);
 
-    const stream = await openai.chat.completions.create({
-      model: 'deepseek-chat',
-      messages,
-      temperature: 0.2,
-      max_tokens: 800,
-      stream: true,
-    });
+    while (!sse.isClosed() && loops++ < MAX_LOOPS) {
+const finish = await streamOneCompletion({
+  model: useModel,
+  messages,
+  temperature: 0.2,
+  max_tokens: 4096,
+  write,
+  sse, // <-- pass it here
+});
 
-    for await (const chunk of stream) {
-      if (clientClosed) break;
-      const token = chunk?.choices?.[0]?.delta?.content;
-      if (token) res.write(`data: ${JSON.stringify({ token })}\n\n`);
+
+      if (finish === 'length') {
+        // auto-continue
+        messages = [
+          ...messages,
+          { role: 'assistant', content: '(continuing...)' },
+          { role: 'user', content: 'Continue exactly from where you stopped. Do not repeat earlier lines; only new code.' },
+        ];
+        continue;
+      }
+      break;
     }
 
-    if (!clientClosed) { res.write('data: [DONE]\n\n'); res.end(); }
-    clearInterval(hb);
+    if (!sse.isClosed()) {
+      res.write('data: [DONE]\n\n'); // send DONE once, at the very end
+      res.end();
+    }
+    sse.stop();
     console.log('[stream-GET] done');
   } catch (err) {
     const status = err?.status || err?.response?.status || 500;
@@ -166,29 +268,25 @@ app.get('/api/stream-es', async (req, res) => {
   }
 });
 
-// --- local SSE sanity test (no DeepSeek) ---
+// ---------- local SSE sanity test (no DeepSeek) ----------
 app.get('/api/stream-test', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  if (res.flushHeaders) res.flushHeaders();
-
+  const sse = initSSE(req, res);
   let i = 0;
   const text = 'hello guddu';
   const t = setInterval(() => {
+    if (sse.isClosed()) { clearInterval(t); return; }
     if (i >= text.length) {
       res.write('data: [DONE]\n\n');
       res.end();
       clearInterval(t);
+      sse.stop();
       return;
     }
     res.write(`data: ${JSON.stringify({ token: text[i++] })}\n\n`);
   }, 150);
-  req.on('close', () => clearInterval(t));
 });
 
-// --- boot ---
+// ---------- boot ----------
 const PORT = Number(process.env.PORT) || 4000;
 const HOST = '127.0.0.1';
 const server = app.listen(PORT, HOST, () => {

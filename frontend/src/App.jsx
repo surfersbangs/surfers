@@ -69,7 +69,6 @@ const Spinner = ({ className = "h-4 w-4" }) => (
   </svg>
 );
 
-
 // ====== Markdown with safe code highlighter ======
 function CodeBlock({ inline, className, children, ...props }) {
   const codeRef = useRef(null);
@@ -167,7 +166,7 @@ export default function App() {
   const [code, setCode] = useState("");
 
   // attachments (home)
-  const [images, setImages] = useState([]);
+  const [images, setImages] = useState([]);   // {file, url, name}
   const [figmas, setFigmas] = useState([]);
   const [showAttach, setShowAttach] = useState(false);
 
@@ -189,69 +188,95 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [phase, setPhase] = useState(null); // 'connecting' | 'thinking' | 'generating' | 'coding' | null
   const atBottomRef = useRef(true);          // live flag: are we near the bottom?
-const [showJump, setShowJump] = useState(false); // show "jump to latest" button
+  const [showJump, setShowJump] = useState(false); // show "jump to latest" button
 
-  const streamRef = useRef(null);
+  const streamRef = useRef(null); // unused with fetch streaming, safe to keep
+ 
+  const prevUidRef = useRef(null); // Track which user the UI state belongs to
+
 
   // chat attachments
-  const [chatImages, setChatImages] = useState([]);
+  const [chatImages, setChatImages] = useState([]); // {file, url, name}
   const [chatFigmas, setChatFigmas] = useState([]);
   const [showChatAttach, setShowChatAttach] = useState(false);
 
   const chatEndRef = useRef(null);
   const scrollRaf = useRef(0);
 
-  // Just the effect (no const declarations here)
-useEffect(() => {
-  if (!chatEndRef.current) return;
-  const observer = new IntersectionObserver(
-    ([entry]) => {
-      const nearBottom = entry.isIntersecting;
-      atBottomRef.current = nearBottom;
-      setShowJump(!nearBottom);
-    },
-    {
-      root: null,
-      threshold: 0.01,
-      rootMargin: "0px 0px -96px 0px",
-    }
-  );
-  observer.observe(chatEndRef.current);
-  return () => observer.disconnect();
-}, []);
+  // pending (store what a logged-out user tried to send)
+  const [pendingPrompt, setPendingPrompt] = useState("");
+  const [pendingImages, setPendingImages] = useState([]); 
+  // same shape as images/chatImages
 
-  
-  
 
+  // observe bottom
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => setUser(currentUser));
-    return () => unsub();
+    if (!chatEndRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const nearBottom = entry.isIntersecting;
+        atBottomRef.current = nearBottom;
+        setShowJump(!nearBottom);
+      },
+      {
+        root: null,
+        threshold: 0.01,
+        rootMargin: "0px 0px -96px 0px",
+      }
+    );
+    observer.observe(chatEndRef.current);
+    return () => observer.disconnect();
   }, []);
 
-useEffect(() => {
-  if (!atBottomRef.current) {
-    setShowJump(true);
-    return; // don't move the viewport if user isn't at bottom
-  }
-  if (scrollRaf.current) return; // already scheduled this frame
+  useEffect(() => {
+  const unsub = onAuthStateChanged(auth, (currentUser) => {
+    const newUid = currentUser?.uid || null;
+    const prevUid = prevUidRef.current;
 
-  scrollRaf.current = requestAnimationFrame(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: isStreaming ? "auto" : "smooth" });
-    scrollRaf.current = 0;
+    // If user switched (or logged out / logged in), wipe the in-memory chat
+    if (newUid !== prevUid) {
+      clearConversationState();
+    }
+
+    setUser(currentUser);
+    prevUidRef.current = newUid;
   });
-}, [messages, isStreaming]);
+  return () => unsub();
+}, []);
+
+
+  // When the user logs in and we have a pending message, auto-send it and go to chat
+useEffect(() => {
+  if (user && pendingPrompt) {
+    const toSend = pendingPrompt;
+    const imgs = pendingImages;
+
+    // clear pending & close auth
+    setPendingPrompt("");
+    setPendingImages([]);
+    setAuthOpen(false);
+
+    // go to chat and send
+    setView("chat");
+    setTimeout(() => {
+      sendMessageStream(toSend, imgs);
+      // clear home composer so it doesn't duplicate later
+      setPrompt("");
+      setImages([]);
+      setFigmas([]);
+    }, 0);
+  }
+}, [user, pendingPrompt, pendingImages]);
 
 
   useEffect(() => () => stopStreaming(), []);
-  
 
-  // Stop any active EventSource when navigating away from chat
-useEffect(() => {
-  if (view === "home") {
-    stopStreaming();
-  }
-}, [view]);
-
+  // Stop streaming on leaving chat
+  useEffect(() => {
+    if (view === "home") {
+      stopStreaming();
+    }
+  }, [view]);
 
   const resetPhoneAuth = () => {
     setPhone(""); setOtp(""); setOtpSent(false); setConfirmation(null);
@@ -263,10 +288,18 @@ useEffect(() => {
     catch (err) { console.error(err); }
   };
   const handleLogout = async () => {
-    try { await signOut(auth); resetPhoneAuth(); setAuthOpen(false); }
-    catch (err) { console.error(err); }
-  };
-
+  try {
+    await signOut(auth);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    resetPhoneAuth();
+    setAuthOpen(false);
+    clearConversationState();   // <- wipe previous account’s chat
+    setView("home");            // optional: kick back to home
+  }
+  }; 
+  
   const sendOtp = async () => {
     try {
       if (!window.recaptchaVerifier) {
@@ -301,25 +334,44 @@ useEffect(() => {
   const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
 
-    const resizeTextarea = () => {
-  const el = textareaRef.current; if (!el) return;
-  el.style.height = "auto";
-  const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
-  el.style.height = next + "px";
-  el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
-};
+  const resizeTextarea = () => {
+    const el = textareaRef.current; if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
+    el.style.height = next + "px";
+    el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
+  };
 
   useEffect(() => { resizeTextarea(); }, [prompt]);
 
   const resizeChatTextarea = () => {
-  const el = chatTextareaRef.current; if (!el) return;
-  el.style.height = "auto";
-  const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
-  el.style.height = next + "px";
-  el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
-};
+    const el = chatTextareaRef.current; if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
+    el.style.height = next + "px";
+    el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
+  };
 
   useEffect(() => { resizeChatTextarea(); }, [chatInput]);
+
+  // type anywhere to focus active input
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (view === "home" && textareaRef.current) textareaRef.current.focus();
+      if (view === "chat" && chatTextareaRef.current) chatTextareaRef.current.focus();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [view]);
+
+  // auto focus chat box when entering chat view
+  useEffect(() => {
+    if (view === "chat") {
+      chatTextareaRef.current?.focus();
+    }
+  }, [view]);
 
   useEffect(() => {
     if (!showAttach) return;
@@ -383,27 +435,56 @@ useEffect(() => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: (m.content || "") + (chunk || "") } : m)));
   };
 
+// Snap a message to the TOP of the viewport
+const scrollMessageToTop = (msgId) => {
+  requestAnimationFrame(() => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+};
+
   const stopStreaming = () => {
-  try { streamRef.current?.close?.(); } catch {}
-  streamRef.current = null;
+    try { streamRef.current?.close?.(); } catch {}
+    streamRef.current = null;
+    setIsStreaming(false);
+    setPhase(null);
+  };
+
+  // Wipe all in-memory chat/UI state when user changes
+const clearConversationState = () => {
+  stopStreaming();
+  setMessages([]);
+  setChatInput("");
+  setPrompt("");
+  setImages([]);
+  setChatImages([]);
+  setFigmas([]);
+  setChatFigmas([]);
+  setCode("");
   setIsStreaming(false);
   setPhase(null);
 };
 
-
-  // non-stream fallback
+  // non-stream fallback (HOME only)
   async function sendMessage(text) {
     const id = Date.now();
     setMessages((prev) => [...prev, { id, role: "user", content: text }]);
     try {
+      const formData = new FormData();
+      formData.append("prompt", text);
+      formData.append("history", JSON.stringify(messages.slice(-8)));
+
+      // add attached images from HOME composer
+      images.forEach((img) => {
+        formData.append("images", img.file, img.name);
+      });
+
       const res = await fetch(`${API_URL}/api/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: text,
-          history: messages.slice(-8).map((m) => ({ role: m.role, content: m.content })),
-        }),
+        body: formData,
       });
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const reply = data.reply || data.code || "";
@@ -413,105 +494,157 @@ useEffect(() => {
     }
   }
 
-  // streaming (EventSource)
-  async function sendMessageStream(text) {
-    const userId = Date.now();
-    setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
+  // streaming via fetch + FormData (supports images) — manual scroll UX
+async function sendMessageStream(text, attachments = []) {
+  // 1) push user message
+  const userId = Date.now();
+  setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
 
-    const asstId = addAssistantPlaceholder();
-  
+  // 2) add assistant placeholder (where tokens will stream)
+  const asstId = addAssistantPlaceholder();
+  setPhase("connecting");
 
-    setPhase('connecting');
+  // 3) SNAP the just-sent user bubble to TOP of viewport
+  scrollMessageToTop(userId);
 
+  // 4) prepare payload (include last 8 messages + any images)
+  const hist = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
+  const formData = new FormData();
+  formData.append("prompt", text);
+  formData.append("history", JSON.stringify(hist));
+  attachments.forEach((img) => {
+    formData.append("images", img.file, img.name);
+  });
 
-    const hist = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
-    const url =
-      `${API_URL}/api/stream-es?` +
-      `prompt=${encodeURIComponent(text)}` +
-      `&history=${encodeURIComponent(JSON.stringify(hist))}`;
-
-    try { streamRef.current?.close?.(); } catch {}
-    const es = new EventSource(url, { withCredentials: false });
-    streamRef.current = es;
+  try {
     setIsStreaming(true);
 
-   let gotAny = false;
-let sawCode = false;
+    // NOTE: this calls POST /api/stream-es which you added on the backend
+    const res = await fetch(`${API_URL}/api/stream-es`, {
+      method: "POST",
+      body: formData,
+    });
 
-const timer = setTimeout(() => {
-  if (!gotAny) appendToAssistant(asstId, `\n// no data yet — check Network tab for /api/stream-es`);
-}, 15000);
+    if (!res.body) throw new Error("No response body (streaming)");
 
-es.onmessage = (ev) => {
-  if (ev.data === "[DONE]") {
-    clearTimeout(timer);
-    setPhase(null);           // finished
-    stopStreaming();
-    return;
-  }
-  try {
-    const json = JSON.parse(ev.data);
-    if (json.status === "started") {
-      setPhase('thinking');   // backend said it's started
-      return;
-    }
-    if (json.token) {
-      if (!gotAny) setPhase('generating'); // first visible token
-      gotAny = true;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
 
-      // crude detection of code-writing phase
-      if (!sawCode && (/```/.test(json.token) || /\b(import|class|def|function|const|let|var)\b/.test(json.token))) {
-        setPhase('coding');
+    let gotAny = false;
+    let sawCode = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+
+      // If your backend sends SSE-like lines, you can parse them here.
+      // If you also send a "[DONE]" sentinel, you can detect & break:
+      if (chunk.includes("[DONE]")) {
+        // ❌ No auto-scroll at the end (manual UX)
+        setPhase(null);
+        setIsStreaming(false);
+        break;
+      }
+
+      if (!gotAny) {
+        setPhase("generating");
+        gotAny = true;
+      }
+      if (
+        !sawCode &&
+        (/```/.test(chunk) || /\b(import|class|def|function|const|let|var)\b/.test(chunk))
+      ) {
+        setPhase("coding");
         sawCode = true;
       }
 
-      appendToAssistant(asstId, json.token);
+      appendToAssistant(asstId, chunk);
     }
-    if (json.error) {
-      appendToAssistant(asstId, `\n// ${json.error}`);
-      setPhase(null);
-    }
-  } catch {
-    // raw text chunk fallback
-    if (!gotAny) setPhase('generating');
-    gotAny = true;
-    appendToAssistant(asstId, ev.data || "");
+  } catch (err) {
+    appendToAssistant(asstId, `\n// stream error: ${String(err)}`);
+    setPhase(null);
+    setIsStreaming(false);
   }
-};
-
-es.onerror = () => {
-  clearTimeout(timer);
-  appendToAssistant(asstId, `\n// stream error (EventSource)`);
-  setPhase(null);
-  stopStreaming();
-};
-
-
-    es.onerror = () => {
-      clearTimeout(timer);
-      appendToAssistant(asstId, `\n// stream error (EventSource)`);
-      stopStreaming();
-    };
-  }
+}
 
   // HOME SUBMIT
-  async function onSubmit(e) {
-    e.preventDefault();
-    if (!prompt.trim()) return;
-    const first = prompt.trim();
-    setPrompt(""); setImages([]); setFigmas([]);
-    setView("chat");
-    setTimeout(() => sendMessageStream(first), 0);
+// HOME SUBMIT
+// HOME SUBMIT — clear input BEFORE sending
+async function onSubmit(e) {
+  e.preventDefault();
+  if (!prompt.trim() && images.length === 0) return;
+
+  const first = prompt.trim();
+  const imgs = images; // preserve attachments before clearing
+
+  // If not logged in, stash and show auth
+  if (!user) {
+    setPendingPrompt(first);
+    setPendingImages(imgs);
+
+    // clear the composer immediately
+    setPrompt("");
+    setImages([]);
+    setFigmas([]);
+
+    setAuthOpen(true);
+    return;
   }
 
+  // clear BEFORE sending so UI empties instantly
+  setPrompt("");
+  setImages([]);
+  setFigmas([]);
+
+  setView("chat");
+
+  // fire-and-forget so the clear renders immediately
+  setTimeout(() => {
+    sendMessageStream(first, imgs);
+  }, 0);
+}
+
+
+
   // CHAT SEND
-  const sendFromChat = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    const txt = chatInput.trim();
-    setChatInput(""); setChatImages([]); setChatFigmas([]);
-    sendMessageStream(txt);
-  };
+// CHAT SEND
+// CHAT SEND — clear input BEFORE sending
+const sendFromChat = (e) => {
+  e.preventDefault();
+  if (!chatInput.trim() && chatImages.length === 0) return;
+
+  const txt = chatInput.trim();
+  const imgs = chatImages; // preserve attachments
+
+  if (!user) {
+    // stash for after-login auto-send
+    setPendingPrompt(txt);
+    setPendingImages(imgs);
+
+    // clear chat composer immediately
+    setChatInput("");
+    setChatImages([]);
+    setChatFigmas([]);
+
+    setAuthOpen(true);
+    return;
+  }
+
+  // clear BEFORE sending so the textarea empties right away
+  setChatInput("");
+  setChatImages([]);
+  setChatFigmas([]);
+
+  // fire-and-forget
+  setTimeout(() => {
+    sendMessageStream(txt, imgs);
+  }, 0);
+};
+
+
+
 
   return (
     <div className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col">
@@ -564,10 +697,11 @@ es.onerror = () => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   onInput={resizeTextarea}
+                  autoFocus
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); formRef.current?.requestSubmit(); } }}
                   placeholder="build fast. for nothing."
                   className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
-                  style={{ maxHeight: `${MAX_TA_HEIGHT}px`, overflowY: "hidden" }}
+                  style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
                 />
 
                 <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
@@ -611,9 +745,9 @@ es.onerror = () => {
           <header className="pt-4">
             <Container>
               <div className="relative h-[28px] flex items-center">
-               <button onClick={() => { stopStreaming(); setPhase(null); setView("home"); }} className="mr-2">
-
-<BackArrow className="h-[18px] w-[18px]" /></button>
+                <button onClick={() => { stopStreaming(); setPhase(null); setView("home"); }} className="mr-2">
+                  <BackArrow className="h-[18px] w-[18px]" />
+                </button>
                 <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"><LogoSmall className="h-[18px] w-[18px]" /></div>
                 <div className="ml-auto cursor-pointer" onClick={() => { resetPhoneAuth(); setAuthOpen(true); }}>
                   <ProfileIcon className="h-[18px] w-[18px]" />
@@ -624,46 +758,41 @@ es.onerror = () => {
 
           <main className="flex-1">
             <Container className="pt-8 pb-40">
-             
-
               {messages.map((m) => {
-  const isAssistant = m.role === "assistant";
-  const hasContent = (m.content ?? "").trim() !== "";
+                const isAssistant = m.role === "assistant";
+                const hasContent = (m.content ?? "").trim() !== "";
 
-  return (
-    <div key={m.id} className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}>
-      <div
-        className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${isAssistant ? "bg-transparent text-[#EDEDED]" : "bg-[#1A1A1B] text-[#EDEDED]"}`}
-        style={{ overflowWrap: "anywhere" }}
-      >
-        {isAssistant ? (
-          hasContent ? (
-            <Markdown>{m.content}</Markdown>
-          ) : isStreaming ? (
-            <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]"
-              aria-live="polite"
-            >
-              <Spinner />
-              <span>
-                {phase === "thinking" ? "thinking…" : phase === "coding" ? "writing code…" : "writing…"}
-              </span>
-            </div>
-          ) : null
-        ) : (
-          <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
-        )}
-      </div>
-    </div>
-  );
-})}
+                return (
+                  <div  id={`msg-${m.id}`} key={m.id} className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}>
+                    <div
+                      className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${isAssistant ? "bg-transparent text-[#EDEDED]" : "bg-[#1A1A1B] text-[#EDEDED]"}`}
+                      style={{ overflowWrap: "anywhere" }}
+                    >
+                      {isAssistant ? (
+                        hasContent ? (
+                          <Markdown>{m.content}</Markdown>
+                        ) : isStreaming ? (
+                          <div
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]"
+                            aria-live="polite"
+                          >
+                            <Spinner />
+                            <span>
+                              {phase === "thinking" ? "thinking…" : phase === "coding" ? "writing code…" : "writing…"}
+                            </span>
+                          </div>
+                        ) : null
+                      ) : (
+                        <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
 
               <div ref={chatEndRef} />
             </Container>
           </main>
-          
-
-          
 
           <div className="fixed left-0 right-0 bottom-0 bg-gradient-to-t from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6">
             <Container>
@@ -673,7 +802,7 @@ es.onerror = () => {
                     <div className="mb-2 flex flex-wrap gap-2">
                       {chatImages.map((img, i) => (
                         <div key={`cimg-${i}`} className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]">
-                          <img src={img.url} alt={img.name} className="h-full w-full object-cover" />
+                          <img src={img.url || URL.createObjectURL(img.file)} alt={img.name} className="h-full w-full object-cover" />
                           <button type="button" onClick={() => removeChatImage(i)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center">×</button>
                         </div>
                       ))}
@@ -696,7 +825,7 @@ es.onerror = () => {
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); chatFormRef.current?.requestSubmit(); } }}
                     placeholder="build fast. for nothing."
                     className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
-                    style={{ maxHeight: `${MAX_TA_HEIGHT}px`, overflowY: "hidden" }}
+                    style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
                   />
 
                   <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">

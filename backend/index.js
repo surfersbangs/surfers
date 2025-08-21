@@ -3,6 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import OpenAI from 'openai';
+import multer from 'multer';
 
 const app = express();
 
@@ -10,11 +11,21 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
+// ---- multipart (images) ----
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 8 }, // 10MB each, up to 8 files
+});
+
 // DeepSeek (OpenAI-compatible)
 const openai = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: 'https://api.deepseek.com',
 });
+
+// Toggle this if your DeepSeek model supports vision input
+// If disabled, we’ll fall back to adding filenames into the text prompt.
+const VISION_ENABLED = process.env.DEEPSEEK_VISION === '1';
 
 // ---------- utils ----------
 function trimHistory(history = [], keepPairs = 4, charCap = 12000) {
@@ -43,7 +54,6 @@ function initSSE(req, res) {
   res.setHeader('X-Accel-Buffering', 'no'); // Nginx: don't buffer
   if (res.flushHeaders) res.flushHeaders();
 
-  // never auto-timeout the socket
   try { req.setTimeout(0); } catch {}
   try { res.setTimeout(0); } catch {}
 
@@ -64,54 +74,79 @@ function initSSE(req, res) {
   };
 }
 
+// Convert image buffers to data URLs for "image_url" content
+function fileToDataUrl(file) {
+  const b64 = file.buffer.toString('base64');
+  return `data:${file.mimetype};base64,${b64}`;
+}
+
+// Build messages including optional images
+function buildMessages({ prompt, history, files }) {
+  const trimmed = trimHistory(history, 6, 16000);
+  const sys = { role: 'system', content: 'You are a concise, helpful coding assistant.' };
+
+  if (VISION_ENABLED && files?.length) {
+    const content = [
+      { type: 'text', text: prompt.trim() },
+      ...files.map((f) => ({
+        type: 'image_url',
+        image_url: { url: fileToDataUrl(f) },
+      })),
+    ];
+    return [sys, ...trimmed, { role: 'user', content }];
+  }
+
+  // Fallback: no vision → include file names in text
+  const names = (files || []).map((f) => f.originalname).join(', ');
+  const promptWithNames = files?.length
+    ? `${prompt.trim()}\n\n[Attached images: ${names}]`
+    : prompt.trim();
+
+  return [sys, ...trimmed, { role: 'user', content: promptWithNames }];
+}
+
 // Stream one completion; write tokens; return finishReason
 async function streamOneCompletion({ model, messages, temperature = 0.2, max_tokens = 4096, write, sse }) {
-
   const stream = await openai.chat.completions.create({
     model,
     messages,
     temperature,
     stream: true,
     max_tokens, // explicit high cap
-    // no "stop" here to avoid cutting code
   });
 
   let finishReason = null;
   for await (const chunk of stream) {
-  if (sse?.isClosed && sse.isClosed()) {
-    // client gone -> stop consuming stream
-    stream.controller?.abort?.();
-    break;
+    if (sse?.isClosed && sse.isClosed()) {
+      stream.controller?.abort?.();
+      break;
+    }
+    const choice = chunk?.choices?.[0];
+    const token = choice?.delta?.content;
+    if (token) write(token);
+    if (choice?.finish_reason) finishReason = choice.finish_reason; // e.g., "length", "stop"
   }
-  const choice = chunk?.choices?.[0];
-  const token = choice?.delta?.content;
-  if (token) write(token);
-  if (choice?.finish_reason) finishReason = choice.finish_reason; // e.g., "length", "stop"
-}
 
-// if client closed during stream, signal caller to bail out
-if (sse?.isClosed && sse.isClosed()) {
-  return finishReason || 'client_closed';
-}
-return finishReason;
-
+  if (sse?.isClosed && sse.isClosed()) {
+    return finishReason || 'client_closed';
+  }
+  return finishReason;
 }
 
 // ---------- health ----------
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// ---------- non-streaming ----------
-app.post('/api/generate', async (req, res) => {
+// ---------- non-streaming (now accepts images via multipart) ----------
+app.post('/api/generate', upload.array('images'), async (req, res) => {
   try {
-    const { prompt, history = [] } = req.body || {};
-    if (!prompt?.trim()) return res.status(400).json({ error: 'Missing prompt' });
+    // supports both JSON and multipart: JSON is already parsed by express.json()
+    const prompt = (req.body?.prompt || '').toString();
+    const history = safeJsonParse(req.body?.history, []);
+    const files = req.files || [];
 
-    const trimmed = trimHistory(history, 6, 16000);
-    const messages = [
-      { role: 'system', content: 'You are a concise, helpful coding assistant.' },
-      ...trimmed,
-      { role: 'user', content: prompt.trim() },
-    ];
+    if (!prompt.trim()) return res.status(400).json({ error: 'Missing prompt' });
+
+    const messages = buildMessages({ prompt, history, files });
 
     const completion = await openai.chat.completions.create({
       model: 'deepseek-chat',
@@ -123,16 +158,11 @@ app.post('/api/generate', async (req, res) => {
     const reply = completion.choices?.[0]?.message?.content?.trim() || '';
     res.json({ reply });
   } catch (err) {
-    const status = err?.status || err?.response?.status || 500;
-    const detail = err?.response?.data || err?.message || 'DeepSeek request failed';
-    console.error('DeepSeek error:', status, detail);
-    if (status === 401) return res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Bad/expired DeepSeek API key' });
-    if (status === 402) return res.status(402).json({ errorCode: 'INSUFFICIENT_BALANCE', message: 'DeepSeek balance is empty' });
-    res.status(status).json({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) });
+    handleDeepseekError(res, err, 'DeepSeek request failed');
   }
 });
 
-// ---------- streaming via POST (fetch clients) ----------
+// ---------- streaming via POST (SSE JSON), kept from your code ----------
 app.post('/api/stream', async (req, res) => {
   try {
     const { prompt, history = [], model } = req.body || {};
@@ -142,18 +172,11 @@ app.post('/api/stream', async (req, res) => {
     res.write(': connected\n\n');
     res.write(`data: ${JSON.stringify({ status: 'started' })}\n\n`);
 
-    const trimmed = trimHistory(history, 6, 16000);
-    const baseMessages = [
-      { role: 'system', content: 'You are a concise, helpful coding assistant.' },
-      ...trimmed,
-      { role: 'user', content: prompt.trim() },
-    ];
-
+    const messages = buildMessages({ prompt, history, files: [] });
     const write = (text) => { if (!sse.isClosed()) res.write(`data: ${JSON.stringify({ token: text })}\n\n`); };
 
     let loops = 0;
-    const MAX_LOOPS = 5; // up to 5 auto-continues
-    let messages = baseMessages;
+    const MAX_LOOPS = 5;
     const useModel = model || 'deepseek-chat';
 
     while (!sse.isClosed() && loops++ < MAX_LOOPS) {
@@ -163,19 +186,17 @@ app.post('/api/stream', async (req, res) => {
         temperature: 0.2,
         max_tokens: 4096,
         write,
-        sse,   // pass sse here
+        sse,
       });
-
       if (finish === 'length') {
         // auto-continue
-        messages = [
-          ...messages,
+        messages.push(
           { role: 'assistant', content: '(continuing...)' },
           { role: 'user', content: 'Continue exactly from where you stopped. Do not repeat earlier lines; only new code.' },
-        ];
+        );
         continue;
       }
-      break; // finished naturally or stopped
+      break;
     }
 
     if (!sse.isClosed()) {
@@ -184,22 +205,15 @@ app.post('/api/stream', async (req, res) => {
     }
     sse.stop();
   } catch (err) {
-    const status = err?.status || err?.response?.status || 500;
-    const detail = err?.response?.data || err?.message || 'DeepSeek stream failed';
-    console.error('DeepSeek stream error (POST):', status, detail);
-    try {
-      res.write(`data: ${JSON.stringify({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) })}\n\n`);
-      res.write('data: [DONE]\n\n');
-    } catch {}
-    res.end();
+    handleStreamError(res, err, 'DeepSeek stream failed (POST /api/stream)');
   }
 });
 
-// ---------- streaming via GET for EventSource ----------
+// ---------- streaming via GET for EventSource (SSE), kept from your code ----------
 app.get('/api/stream-es', async (req, res) => {
   try {
     const prompt = `${req.query.prompt || ''}`;
-    const histParam = `${req.query.history || '[]'}`; // URL-encoded JSON from client
+    const histParam = `${req.query.history || '[]'}`;
     if (!prompt.trim()) return res.status(400).end();
 
     let history = [];
@@ -211,59 +225,87 @@ app.get('/api/stream-es', async (req, res) => {
     res.write(': connected\n\n');
     res.write(`data: ${JSON.stringify({ status: 'started' })}\n\n`);
 
-    const trimmed = trimHistory(history, 6, 16000);
-    const baseMessages = [
-      { role: 'system', content: 'You are a concise, helpful coding assistant.' },
-      ...trimmed,
-      { role: 'user', content: prompt.trim() },
-    ];
-
+    const messages = buildMessages({ prompt, history, files: [] });
     const write = (text) => { if (!sse.isClosed()) res.write(`data: ${JSON.stringify({ token: text })}\n\n`); };
 
     let loops = 0;
     const MAX_LOOPS = 5;
-    let messages = baseMessages;
     const useModel = 'deepseek-chat';
 
-    console.log('[stream-GET] prompt len:', prompt.length, 'hist:', history.length);
-
     while (!sse.isClosed() && loops++ < MAX_LOOPS) {
-const finish = await streamOneCompletion({
-  model: useModel,
-  messages,
-  temperature: 0.2,
-  max_tokens: 4096,
-  write,
-  sse, // <-- pass it here
-});
-
-
+      const finish = await streamOneCompletion({
+        model: useModel,
+        messages,
+        temperature: 0.2,
+        max_tokens: 4096,
+        write,
+        sse,
+      });
       if (finish === 'length') {
-        // auto-continue
-        messages = [
-          ...messages,
+        messages.push(
           { role: 'assistant', content: '(continuing...)' },
           { role: 'user', content: 'Continue exactly from where you stopped. Do not repeat earlier lines; only new code.' },
-        ];
+        );
         continue;
       }
       break;
     }
 
     if (!sse.isClosed()) {
-      res.write('data: [DONE]\n\n'); // send DONE once, at the very end
+      res.write('data: [DONE]\n\n');
       res.end();
     }
     sse.stop();
-    console.log('[stream-GET] done');
   } catch (err) {
-    const status = err?.status || err?.response?.status || 500;
-    const detail = err?.response?.data || err?.message || 'DeepSeek stream failed';
-    console.error('DeepSeek stream error (GET):', status, detail);
-    try {
-      res.write(`data: ${JSON.stringify({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) })}\n\n`);
-      res.write('data: [DONE]\n\n');
-    } catch {}
+    handleStreamError(res, err, 'DeepSeek stream failed (GET /api/stream-es)');
+  }
+});
+
+// ---------- NEW: streaming via POST (multipart) for fetch+reader ----------
+// Returns plain text chunks (NOT SSE) so your frontend FormData streaming works.
+app.post('/api/stream-es', upload.array('images'), async (req, res) => {
+  try {
+    const prompt = (req.body?.prompt || '').toString();
+    const history = safeJsonParse(req.body?.history, []);
+    const files = req.files || [];
+
+    if (!prompt.trim()) return res.status(400).end();
+
+    // Plain text streaming headers
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const messages = buildMessages({ prompt, history, files });
+    const write = (text) => { try { res.write(text); } catch {} };
+
+    let loops = 0;
+    const MAX_LOOPS = 5;
+    const useModel = 'deepseek-chat';
+
+    while (loops++ < MAX_LOOPS) {
+      const finish = await streamOneCompletion({
+        model: useModel,
+        messages,
+        temperature: 0.2,
+        max_tokens: 4096,
+        write,
+        sse: null, // not using SSE here
+      });
+      if (finish === 'length') {
+        messages.push(
+          { role: 'assistant', content: '(continuing...)' },
+          { role: 'user', content: 'Continue exactly from where you stopped. Do not repeat earlier lines; only new code.' },
+        );
+        continue;
+      }
+      break;
+    }
+
+    try { res.write('[DONE]'); } catch {}
+    res.end();
+  } catch (err) {
+    try { res.write(`\n[ERROR] ${err?.message || String(err)}`); } catch {}
     res.end();
   }
 });
@@ -296,3 +338,27 @@ server.on('error', (err) => console.error('Listen error:', err));
 
 process.on('unhandledRejection', (r) => console.error('UNHANDLED REJECTION:', r));
 process.on('uncaughtException', (e) => console.error('UNCAUGHT EXCEPTION:', e));
+
+// ---------- helpers ----------
+function safeJsonParse(str, fallback = []) {
+  try { return typeof str === 'string' ? JSON.parse(str) : (str ?? fallback); }
+  catch { return fallback; }
+}
+function handleDeepseekError(res, err, fallbackMsg) {
+  const status = err?.status || err?.response?.status || 500;
+  const detail = err?.response?.data || err?.message || fallbackMsg;
+  console.error('DeepSeek error:', status, detail);
+  if (status === 401) return res.status(401).json({ errorCode: 'UNAUTHORIZED', message: 'Bad/expired DeepSeek API key' });
+  if (status === 402) return res.status(402).json({ errorCode: 'INSUFFICIENT_BALANCE', message: 'DeepSeek balance is empty' });
+  res.status(status).json({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) });
+}
+function handleStreamError(res, err, label) {
+  const status = err?.status || err?.response?.status || 500;
+  const detail = err?.response?.data || err?.message || label;
+  console.error(`${label}:`, status, detail);
+  try {
+    res.write(`data: ${JSON.stringify({ error: typeof detail === 'string' ? detail : JSON.stringify(detail) })}\n\n`);
+    res.write('data: [DONE]\n\n');
+  } catch {}
+  res.end();
+}

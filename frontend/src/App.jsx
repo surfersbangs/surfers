@@ -63,7 +63,7 @@ const Spinner = ({ className = "h-4 w-4" }) => (
     <g fill="none" stroke="#C8CCD2" strokeWidth="2">
       <circle cx="12" cy="12" r="9" opacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9">
-        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite" />
+        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.5s" repeatCount="indefinite" />
       </path>
     </g>
   </svg>
@@ -191,6 +191,9 @@ export default function App() {
   const [showJump, setShowJump] = useState(false); // show "jump to latest" button
 
   const streamRef = useRef(null); // unused with fetch streaming, safe to keep
+  const streamAbortRef = useRef(null);   // holds AbortController for the active stream
+  const interruptedRef = useRef(false);  // prevents double-abort spam on keypress
+
  
   const prevUidRef = useRef(null); // Track which user the UI state belongs to
 
@@ -333,6 +336,9 @@ useEffect(() => {
   const LINE_HEIGHT_PX = 20;
   const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
+  // 20s "no data" guard for streaming
+const STREAM_TIMEOUT_MS = 20000;
+
 
   const resizeTextarea = () => {
     const el = textareaRef.current; if (!el) return;
@@ -444,12 +450,13 @@ const scrollMessageToTop = (msgId) => {
   });
 };
 
-  const stopStreaming = () => {
-    try { streamRef.current?.close?.(); } catch {}
-    streamRef.current = null;
-    setIsStreaming(false);
-    setPhase(null);
-  };
+const stopStreaming = (reason = "manual-stop") => {
+  try { streamAbortRef.current?.abort?.(reason); } catch {}
+  streamAbortRef.current = null;
+  setIsStreaming(false);
+  setPhase(null);
+};
+
 
   // Wipe all in-memory chat/UI state when user changes
 const clearConversationState = () => {
@@ -494,17 +501,18 @@ const clearConversationState = () => {
     }
   }
 
-  // streaming via fetch + FormData (supports images) — manual scroll UX
+// streaming via fetch + FormData (supports images) — robust, no auto-scroll at end
+// streaming via fetch + FormData (supports images) — type-to-interrupt capable
 async function sendMessageStream(text, attachments = []) {
   // 1) push user message
   const userId = Date.now();
   setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
 
-  // 2) add assistant placeholder (where tokens will stream)
+  // 2) add assistant placeholder
   const asstId = addAssistantPlaceholder();
   setPhase("connecting");
 
-  // 3) SNAP the just-sent user bubble to TOP of viewport
+  // 3) snap the just-sent user bubble to top
   scrollMessageToTop(userId);
 
   // 4) prepare payload (include last 8 messages + any images)
@@ -513,71 +521,97 @@ async function sendMessageStream(text, attachments = []) {
   formData.append("prompt", text);
   formData.append("history", JSON.stringify(hist));
   attachments.forEach((img) => {
-    formData.append("images", img.file, img.name);
+    if (img?.file) formData.append("images", img.file, img.name || "image.png");
   });
+
+  // timeout & abort wiring
+  const ac = new AbortController();
+  streamAbortRef.current = ac;
+  interruptedRef.current = false;
+  const STREAM_TIMEOUT_MS = 20000;
+  const timeout = setTimeout(() => ac.abort("stream-timeout"), STREAM_TIMEOUT_MS);
+
+  let gotAny = false;
 
   try {
     setIsStreaming(true);
 
-    // NOTE: this calls POST /api/stream-es which you added on the backend
     const res = await fetch(`${API_URL}/api/stream-es`, {
       method: "POST",
       body: formData,
+      signal: ac.signal,
     });
 
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     if (!res.body) throw new Error("No response body (streaming)");
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-
-    let gotAny = false;
-    let sawCode = false;
+    let leftover = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
+      const chunkStr = decoder.decode(value, { stream: true });
+      let data = leftover + chunkStr;
+      leftover = "";
 
-      // If your backend sends SSE-like lines, you can parse them here.
-      // If you also send a "[DONE]" sentinel, you can detect & break:
-      if (chunk.includes("[DONE]")) {
-        // ❌ No auto-scroll at the end (manual UX)
-        setPhase(null);
-        setIsStreaming(false);
+      // detect [DONE]
+      const doneIdx = data.indexOf("[DONE]");
+      if (doneIdx !== -1) {
+        const before = data.slice(0, doneIdx);
+        if (before) {
+          appendToAssistant(asstId, before);
+          if (/\S/.test(before)) gotAny = true;
+        }
         break;
       }
 
-      if (!gotAny) {
-        setPhase("generating");
-        gotAny = true;
-      }
-      if (
-        !sawCode &&
-        (/```/.test(chunk) || /\b(import|class|def|function|const|let|var)\b/.test(chunk))
-      ) {
-        setPhase("coding");
-        sawCode = true;
-      }
+      if (data) {
+        appendToAssistant(asstId, data);
+        if (/\S/.test(data)) gotAny = true;
 
-      appendToAssistant(asstId, chunk);
+        // phase hints
+        if (/```|\b(import|class|def|function|const|let|var)\b/.test(data)) {
+          setPhase("coding");
+        } else if (!gotAny) {
+          setPhase("generating");
+        }
+      }
     }
   } catch (err) {
-    appendToAssistant(asstId, `\n// stream error: ${String(err)}`);
+    // Silent on intentional aborts / timeout
+    const msg = String(err?.name || err || "");
+    const reason = (err && "message" in err) ? String(err.message) : msg;
+    if (!/AbortError/i.test(msg) && !/AbortError/i.test(reason) && !/manual-stop|user-typed|new-message|stream-timeout/.test(reason)) {
+      appendToAssistant(asstId, `\n// stream error: ${String(err)}`);
+    }
+  } finally {
+    clearTimeout(timeout);
+    if (streamAbortRef.current === ac) streamAbortRef.current = null;
+    if (!gotAny) {
+      // only add this if literally nothing arrived
+      appendToAssistant(asstId, "\n// (no content received — check server logs or network)");
+    }
     setPhase(null);
     setIsStreaming(false);
   }
 }
+
+
 
   // HOME SUBMIT
 // HOME SUBMIT
 // HOME SUBMIT — clear input BEFORE sending
 async function onSubmit(e) {
   e.preventDefault();
+  if (isStreaming) stopStreaming("new-message"); // <-- ADD THIS LINE
+
   if (!prompt.trim() && images.length === 0) return;
 
   const first = prompt.trim();
-  const imgs = images; // preserve attachments before clearing
+  const imgs = images;
 
   // If not logged in, stash and show auth
   if (!user) {
@@ -613,6 +647,8 @@ async function onSubmit(e) {
 // CHAT SEND — clear input BEFORE sending
 const sendFromChat = (e) => {
   e.preventDefault();
+  if (isStreaming) stopStreaming("new-message"); // <-- ADD THIS LINE
+
   if (!chatInput.trim() && chatImages.length === 0) return;
 
   const txt = chatInput.trim();

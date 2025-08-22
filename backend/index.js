@@ -23,6 +23,74 @@ const openai = new OpenAI({
   baseURL: 'https://api.deepseek.com',
 });
 
+// ---------- brand system prompt + intercepts ----------
+const BRAND_APP      = process.env.SYSTEM_BRAND_NAME   || 'surfers';
+const BRAND_DEV_BY   = process.env.SYSTEM_DEV_BY       || 'Sup dude, I am developed by surfers Inc.';
+const BRAND_CREDIT   = process.env.SYSTEM_CREDIT       || 'Yo, surfers is designed and developed by Guddu-The real boss of Shakeel the Harami';
+
+// System prompt used in all requests
+const SYSTEM_PROMPT = [
+  `You are the ${BRAND_APP} builder assistant. Your goals:`,
+  '1) Speak like a normal person. Start answers with a short, plain-English recap of what you did (1–4 bullet points, “I added X, wired Y, did Z.”).',
+  '2) When writing code, prefer **a single, runnable file** the user can preview immediately. If single-file is not feasible, include the **minimum** number of files and make sure all imports/paths line up so it runs without missing pieces.',
+  '3) Never hand-wave with "..." or TODOs. Give **complete** code that runs.',
+  '',
+  '### Code Output Rules',
+  '- Always use fenced code blocks with a correct language tag.',
+  '- For single-file web demos, default to `index.html` (vanilla HTML/CSS/JS) with everything inline or CDN imports so it runs by just opening the file.',
+  '- If the user explicitly asks for a framework/language, adapt:',
+  '  - **React (single-file demo)**: provide `index.html` with `<script type="module">` and CDN imports (e.g. esm.sh/unpkg) so it runs by double-click or simple static host.',
+  '  - **Node/CLI/Python/etc.**: provide a **single script file** when possible and a very short "How to run" section (commands only).',
+  '- If truly necessary to split files, output **each file** in its own fenced block. Put a filename comment on the first line, like:',
+  '```html',
+  '<!-- filename: index.html -->',
+  '...',
+  '```',
+  '```js',
+  '// filename: main.js',
+  '...',
+  '```',
+  'Make sure import paths match those filenames exactly.',
+  '',
+  '### Explanations',
+  '- Start with: **What I built & how** — 2–6 bullets in layman terms.',
+  '- Then: **How to run** — 2–6 concise steps. Commands only, no fluff.',
+  '- Then the full code blocks.',
+  '',
+  '### Non-coding questions',
+  '- Answer briefly in plain language first.',
+  '- If an example helps, include a tiny, runnable snippet.',
+  '',
+  '### Images / Attachments',
+  ' - If images are attached and relevant, mention how they’re used or what you infer from them.',
+  '',
+  '### Branding (must follow exactly)',
+  `- If asked "who built/developed/made you/this/it" (or similar), answer exactly: "${BRAND_DEV_BY}".`,
+  `- If asked "who made/created/built ${BRAND_DEV_BY}" (or similar), answer exactly: "${BRAND_CREDIT}".`,
+  '- Do not claim to be made by anyone else. Do not speculate.',
+  '- If asked who is Guddu, answer he is the real boss of Shakeel the Harami.',
+].join('\n');
+
+
+
+// Deterministic intercept so branding is 100% reliable
+function brandIntercept(promptRaw) {
+  const p = String(promptRaw || '').toLowerCase();
+
+  // e.g. "who built you", "who developed this", "who made it"
+  if (/(who\s+(built|developed|made)\s+(you|this|it)|who\s+is\s+your\s+(creator|developer))/i.test(p)) {
+    return BRAND_DEV_BY;
+  }
+
+  // e.g. "who made surfers", "who created surfers", "who built surfers"
+  const brandRegex = new RegExp(`who\\s+(made|created|built|developed)\\s+(${BRAND_APP})`, 'i');
+  if (brandRegex.test(p)) {
+    return BRAND_CREDIT;
+  }
+
+  return null;
+}
+
 // Toggle this if your DeepSeek model supports vision input
 // If disabled, we’ll fall back to adding filenames into the text prompt.
 const VISION_ENABLED = process.env.DEEPSEEK_VISION === '1';
@@ -83,7 +151,8 @@ function fileToDataUrl(file) {
 // Build messages including optional images
 function buildMessages({ prompt, history, files }) {
   const trimmed = trimHistory(history, 6, 16000);
-  const sys = { role: 'system', content: 'You are a concise, helpful coding assistant.' };
+  const sys = { role: 'system', content: SYSTEM_PROMPT };
+ // <-- use brand system prompt
 
   if (VISION_ENABLED && files?.length) {
     const content = [
@@ -137,28 +206,60 @@ async function streamOneCompletion({ model, messages, temperature = 0.2, max_tok
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 // ---------- non-streaming (now accepts images via multipart) ----------
-app.post('/api/generate', upload.array('images'), async (req, res) => {
+app.post('/api/stream-es', upload.array('images'), async (req, res) => {
   try {
-    // supports both JSON and multipart: JSON is already parsed by express.json()
     const prompt = (req.body?.prompt || '').toString();
     const history = safeJsonParse(req.body?.history, []);
     const files = req.files || [];
+    if (!prompt.trim()) return res.status(400).end();
 
-    if (!prompt.trim()) return res.status(400).json({ error: 'Missing prompt' });
+    // Plain text streaming headers
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('X-Accel-Buffering', 'no');
+    if (res.flushHeaders) res.flushHeaders();
+
+    // 🔹 BRAND INTERCEPT: deterministic short-circuit
+    const intercept = brandIntercept(prompt);
+    if (intercept) {
+      try { res.write(intercept); } catch {}
+      try { res.write('[DONE]'); } catch {}
+      return res.end();
+    }
 
     const messages = buildMessages({ prompt, history, files });
+    const write = (text) => { try { res.write(text); } catch {} };
 
-    const completion = await openai.chat.completions.create({
-      model: 'deepseek-chat',
-      messages,
-      temperature: 0.2,
-      max_tokens: 4096, // keep explicit
-    });
+    let loops = 0;
+    const MAX_LOOPS = 5;
+    const useModel = 'deepseek-chat';
 
-    const reply = completion.choices?.[0]?.message?.content?.trim() || '';
-    res.json({ reply });
+    while (loops++ < MAX_LOOPS) {
+      const finish = await streamOneCompletion({
+        model: useModel,
+        messages,
+        temperature: 0.2,
+        max_tokens: 4096,
+        write,
+        sse: null, // plain text mode
+      });
+
+      if (finish === 'length') {
+        messages.push(
+          { role: 'assistant', content: '(continuing...)' },
+          { role: 'user', content: 'Continue exactly from where you stopped. Do not repeat earlier lines; only new code.' },
+        );
+        continue;
+      }
+      break;
+    }
+
+    try { res.write('[DONE]'); } catch {}
+    res.end();
   } catch (err) {
-    handleDeepseekError(res, err, 'DeepSeek request failed');
+    try { res.write(`\n[ERROR] ${err?.message || String(err)}`); } catch {}
+    try { res.write('[DONE]'); } catch {}
+    res.end();
   }
 });
 
@@ -167,6 +268,18 @@ app.post('/api/stream', async (req, res) => {
   try {
     const { prompt, history = [], model } = req.body || {};
     if (!prompt?.trim()) return res.status(400).end();
+
+    // Brand intercept for SSE: stream one token and close
+    const intercept = brandIntercept(prompt);
+    if (intercept) {
+      const sse = initSSE(req, res);
+      res.write(': connected\n\n');
+      res.write(`data: ${JSON.stringify({ status: 'started' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ token: intercept })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      sse.stop();
+      return res.end();
+    }
 
     const sse = initSSE(req, res);
     res.write(': connected\n\n');
@@ -215,6 +328,18 @@ app.get('/api/stream-es', async (req, res) => {
     const prompt = `${req.query.prompt || ''}`;
     const histParam = `${req.query.history || '[]'}`;
     if (!prompt.trim()) return res.status(400).end();
+
+    // Brand intercept for SSE: stream one token and close
+    const intercept = brandIntercept(prompt);
+    if (intercept) {
+      const sse = initSSE(req, res);
+      res.write(': connected\n\n');
+      res.write(`data: ${JSON.stringify({ status: 'started' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ token: intercept })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      sse.stop();
+      return res.end();
+    }
 
     let history = [];
     try { history = JSON.parse(decodeURIComponent(histParam)); } catch {
@@ -270,6 +395,17 @@ app.post('/api/stream-es', upload.array('images'), async (req, res) => {
     const files = req.files || [];
 
     if (!prompt.trim()) return res.status(400).end();
+
+    // Brand intercept — write once and finish (raw text stream)
+    const intercept = brandIntercept(prompt);
+    if (intercept) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.write(intercept);
+      res.write('[DONE]');
+      return res.end();
+    }
 
     // Plain text streaming headers
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');

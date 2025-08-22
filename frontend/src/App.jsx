@@ -336,6 +336,60 @@ useEffect(() => {
   const LINE_HEIGHT_PX = 20;
   const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
+  // ---- Typewriter placeholder (home) ----
+const TW_PREFIX = "surfers builds ";
+const TW_LIST = ["games for you", "websites for you", "apps for you", "anything for you"];
+
+const [twIdx, setTwIdx] = useState(0);      // which phrase from TW_LIST
+const [twSub, setTwSub] = useState(0);      // how many chars of that phrase are shown
+const [twDeleting, setTwDeleting] = useState(false); // typing or deleting
+const [blink, setBlink] = useState(true);   // caret blink
+
+// Compose the visible animated text (only the dynamic part types/deletes)
+const typewriter = TW_PREFIX + TW_LIST[twIdx].slice(0, twSub) + (blink ? " |" : "  ");
+
+// caret blink
+useEffect(() => {
+  const t = setInterval(() => setBlink((b) => !b), 500);
+  return () => clearInterval(t);
+}, []);
+
+// typing/deleting loop (paused when user has typed something)
+useEffect(() => {
+  if (prompt) return; // if user started typing, pause the fake placeholder
+
+  const full = TW_LIST[twIdx];
+  const typingDelay = 150;    // ms per char when typing
+  const deletingDelay = 25;  // ms per char when deleting
+  const holdAtEnd = 450;     // pause when a word finishes
+  const holdAtStart = 120;   // tiny pause before next word
+
+  let timer;
+  if (!twDeleting) {
+    // typing
+    if (twSub < full.length) {
+      timer = setTimeout(() => setTwSub(twSub + 1), typingDelay);
+    } else {
+      // finished typing -> hold, then start deleting
+      timer = setTimeout(() => setTwDeleting(true), holdAtEnd);
+    }
+  } else {
+    // deleting
+    if (twSub > 0) {
+      timer = setTimeout(() => setTwSub(twSub - 1), deletingDelay);
+    } else {
+      // finished deleting -> next word, start typing
+      timer = setTimeout(() => {
+        setTwDeleting(false);
+        setTwIdx((twIdx + 1) % TW_LIST.length);
+      }, holdAtStart);
+    }
+  }
+
+  return () => clearTimeout(timer);
+}, [prompt, twIdx, twSub, twDeleting]);
+
+  
   // 20s "no data" guard for streaming
 const STREAM_TIMEOUT_MS = 20000;
 
@@ -727,6 +781,16 @@ const sendFromChat = (e) => {
                   </div>
                 )}
 
+                {!prompt && (
+  <div
+    className="pointer-events-none absolute left-[18px] right-[18px] top-[12px] text-[16px] leading-[20px] text-[#9AA0A6] select-none"
+    aria-hidden="true"
+  >
+    {typewriter}
+  </div>
+)}
+
+
                 <textarea
                   ref={textareaRef}
                   rows={1}
@@ -735,8 +799,7 @@ const sendFromChat = (e) => {
                   onInput={resizeTextarea}
                   autoFocus
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); formRef.current?.requestSubmit(); } }}
-                  placeholder="build fast. for nothing."
-                  className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
+                                    className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
                   style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
                 />
 
@@ -859,8 +922,8 @@ const sendFromChat = (e) => {
                     onChange={(e) => setChatInput(e.target.value)}
                     onInput={resizeChatTextarea}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); chatFormRef.current?.requestSubmit(); } }}
-                    placeholder="build fast. for nothing."
-                    className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
+                    placeholder="build anything fantasic."
+                    className="w-full bg-transparent outline-none text-[16px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
                     style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
                   />
 

@@ -12,14 +12,59 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "highlight.js/styles/github-dark-dimmed.css";
 
-// ====== Utility Container ======
+/**********************
+ * ERROR BOUNDARY
+ * Prevent a blank screen by catching render/runtime errors
+ **********************/
+import React from "react";
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, msg: "" };
+  }
+  static getDerivedStateFromError(err) {
+    return { hasError: true, msg: String(err) };
+  }
+  componentDidCatch(err, info) {
+    // eslint-disable-next-line no-console
+    console.error("\n[ErrorBoundary] App crashed:", err, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24, color: "#eee", background: "#0B0B0C", minHeight: "100vh" }}>
+          <div style={{
+            maxWidth: 720,
+            margin: "40px auto",
+            background: "#121214",
+            border: "1px solid #2A2A2A",
+            borderRadius: 16,
+            padding: 16,
+          }}>
+            <h2 style={{ marginTop: 0 }}>something broke. 😵‍💫</h2>
+            <p style={{ opacity: 0.8 }}>the app hit a runtime error but stayed up thanks to the error boundary.</p>
+            <pre style={{ whiteSpace: "pre-wrap", background: "#0f0f10", padding: 12, borderRadius: 12, border: "1px solid #2A2A2A" }}>{this.state.msg}</pre>
+            <p style={{ opacity: 0.7, fontSize: 12 }}>check the console for stack trace (DevTools ▶ Console).</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/**********************
+ * Utility Container
+ **********************/
 const Container = ({ children, className = "" }) => (
   <div className={`mx-auto ${className}`} style={{ width: "min(1120px, 90vw)" }}>
     {children}
   </div>
 );
 
-// ====== Logos / Icons ======
+/**********************
+ * Icons / Logos
+ **********************/
 const LogoSmall = ({ className = "h-5 w-5" }) => (
   <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
     <circle cx="32" cy="32" r="30" fill="#2BA6FF" />
@@ -40,7 +85,6 @@ const BackArrow = ({ className = "h-5 w-5" }) => (
   </svg>
 );
 
-// small icons
 const ImageIcon = ({ className = "h-4 w-4" }) => (
   <svg viewBox="0 0 20 20" className={className} fill="none" aria-hidden="true">
     <rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="#2B2B2B" />
@@ -57,7 +101,6 @@ const FigmaIcon = ({ className = "h-4 w-4" }) => (
     <path d="M9 12a3 3 0 100-6 3 3 0 000 6z" fill="#A259FF" />
   </svg>
 );
-// loader
 const Spinner = ({ className = "h-4 w-4" }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
     <g fill="none" stroke="#C8CCD2" strokeWidth="2">
@@ -69,7 +112,33 @@ const Spinner = ({ className = "h-4 w-4" }) => (
   </svg>
 );
 
-// ====== Markdown with safe code highlighter ======
+/**********************
+ * Modal + tiny button (for code / view / go live)
+ **********************/
+const Modal = ({ open, onClose, title, children }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80">
+      <div className="relative w-[min(960px,92vw)] h-[min(80vh,720px)] rounded-2xl border border-[#2A2A2A] bg-[#0B0B0C] p-4">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 h-8 w-8 rounded-full bg-[#121214] text-[#EDEDED] hover:bg-[#1A1A1B]"
+          aria-label="close"
+        >
+          ×
+        </button>
+        {title && <h3 className="text-lg mb-3 text-[#EDEDED]">{title}</h3>}
+        <div className="w-full h-[calc(100%-40px)] overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#111214]">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**********************
+ * Markdown with code highlight (safe)
+ **********************/
 function CodeBlock({ inline, className, children, ...props }) {
   const codeRef = useRef(null);
   const raw = Array.isArray(children) ? children.join("") : (children ?? "");
@@ -94,7 +163,7 @@ function CodeBlock({ inline, className, children, ...props }) {
             codeRef.current.textContent = raw;
           }
         } catch {
-          codeRef.current.textContent = raw;
+          if (codeRef.current) codeRef.current.textContent = raw;
         }
       })
       .catch(() => {
@@ -155,8 +224,18 @@ function Markdown({ children }) {
   );
 }
 
-// ====== MAIN APP ======
-export default function App() {
+/**********************
+ * Streaming tuning constants
+ **********************/
+// Abort only when the stream is silent for this long
+const STREAM_INACTIVITY_MS = 25000; // 25s of no data
+// Optional: a hard cap for super-long generations (set 0 to disable)
+const STREAM_MAX_DURATION_MS = 180000; // 3 minutes
+
+/**********************
+ * MAIN APP
+ **********************/
+function SurfersApp() {
   // ---- View routing ----
   const [view, setView] = useState("home");
 
@@ -188,15 +267,29 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [phase, setPhase] = useState(null); // 'connecting' | 'thinking' | 'generating' | 'coding' | null
   const atBottomRef = useRef(true);          // live flag: are we near the bottom?
-  const [showJump, setShowJump] = useState(false); // show "jump to latest" button
+  const [showJump, setShowJump] = useState(false); // show "jump to latest" button (future)
 
-  const streamRef = useRef(null); // unused with fetch streaming, safe to keep
   const streamAbortRef = useRef(null);   // holds AbortController for the active stream
   const interruptedRef = useRef(false);  // prevents double-abort spam on keypress
+  // ---- Smooth streaming buffer (prevents re-render on every token) ----
+  const streamBufRef = useRef({ buf: "", t: null });
 
- 
+  const flushNow = (asstId) => {
+    if (!streamBufRef.current.buf) return;
+    appendToAssistant(asstId, streamBufRef.current.buf);
+    streamBufRef.current.buf = "";
+  };
+
+  const scheduleFlush = (asstId) => {
+    if (streamBufRef.current.t) return;
+    // ~30fps flush cadence
+    streamBufRef.current.t = setTimeout(() => {
+      streamBufRef.current.t = null;
+      flushNow(asstId);
+    }, 33);
+  };
+
   const prevUidRef = useRef(null); // Track which user the UI state belongs to
-
 
   // chat attachments
   const [chatImages, setChatImages] = useState([]); // {file, url, name}
@@ -204,120 +297,14 @@ export default function App() {
   const [showChatAttach, setShowChatAttach] = useState(false);
 
   const chatEndRef = useRef(null);
-  const scrollRaf = useRef(0);
 
   // pending (store what a logged-out user tried to send)
   const [pendingPrompt, setPendingPrompt] = useState("");
-  const [pendingImages, setPendingImages] = useState([]); 
-  // same shape as images/chatImages
+  const [pendingImages, setPendingImages] = useState([]);
 
-
-  // observe bottom
-  useEffect(() => {
-    if (!chatEndRef.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const nearBottom = entry.isIntersecting;
-        atBottomRef.current = nearBottom;
-        setShowJump(!nearBottom);
-      },
-      {
-        root: null,
-        threshold: 0.01,
-        rootMargin: "0px 0px -96px 0px",
-      }
-    );
-    observer.observe(chatEndRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-  const unsub = onAuthStateChanged(auth, (currentUser) => {
-    const newUid = currentUser?.uid || null;
-    const prevUid = prevUidRef.current;
-
-    // If user switched (or logged out / logged in), wipe the in-memory chat
-    if (newUid !== prevUid) {
-      clearConversationState();
-    }
-
-    setUser(currentUser);
-    prevUidRef.current = newUid;
-  });
-  return () => unsub();
-}, []);
-
-
-  // When the user logs in and we have a pending message, auto-send it and go to chat
-useEffect(() => {
-  if (user && pendingPrompt) {
-    const toSend = pendingPrompt;
-    const imgs = pendingImages;
-
-    // clear pending & close auth
-    setPendingPrompt("");
-    setPendingImages([]);
-    setAuthOpen(false);
-
-    // go to chat and send
-    setView("chat");
-    setTimeout(() => {
-      sendMessageStream(toSend, imgs);
-      // clear home composer so it doesn't duplicate later
-      setPrompt("");
-      setImages([]);
-      setFigmas([]);
-    }, 0);
-  }
-}, [user, pendingPrompt, pendingImages]);
-
-
-  useEffect(() => () => stopStreaming(), []);
-
-  // Stop streaming on leaving chat
-  useEffect(() => {
-    if (view === "home") {
-      stopStreaming();
-    }
-  }, [view]);
-
-  const resetPhoneAuth = () => {
-    setPhone(""); setOtp(""); setOtpSent(false); setConfirmation(null);
-    if (window.recaptchaVerifier) { try { window.recaptchaVerifier.clear(); } catch {} window.recaptchaVerifier = null; }
-  };
-
-  const handleGoogleLogin = async () => {
-    try { await signInWithPopup(auth, googleProvider); resetPhoneAuth(); setAuthOpen(false); }
-    catch (err) { console.error(err); }
-  };
-  const handleLogout = async () => {
-  try {
-    await signOut(auth);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    resetPhoneAuth();
-    setAuthOpen(false);
-    clearConversationState();   // <- wipe previous account’s chat
-    setView("home");            // optional: kick back to home
-  }
-  }; 
-  
-  const sendOtp = async () => {
-    try {
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
-      }
-      const confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
-      setConfirmation(confirmationResult); setOtpSent(true);
-    } catch (err) {
-      console.error("OTP error:", err); alert("Failed to send OTP. Format: +91xxxxxxxxxx");
-    }
-  };
-  const verifyOtp = async () => {
-    try { if (confirmation) { await confirmation.confirm(otp); resetPhoneAuth(); setAuthOpen(false); } }
-    catch (err) { console.error("OTP verify error:", err); alert("Invalid OTP"); }
-  };
+  // action modals
+  const [modal, setModal] = useState({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+  const previewUrlRef = useRef(null);
 
   // refs (home)
   const formRef = useRef(null);
@@ -336,63 +323,148 @@ useEffect(() => {
   const LINE_HEIGHT_PX = 20;
   const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
+
   // ---- Typewriter placeholder (home) ----
-const TW_PREFIX = "surfers builds ";
-const TW_LIST = ["games for you", "websites for you", "apps for you", "anything for you"];
+  const TW_PREFIX = "surfers builds ";
+  const TW_LIST = ["games for you", "websites for you", "apps for you", "anything for you"];
+  const [twIdx, setTwIdx] = useState(0);
+  const [twSub, setTwSub] = useState(0);
+  const [twDeleting, setTwDeleting] = useState(false);
+  const [blink, setBlink] = useState(true);
+  const typewriter = TW_PREFIX + TW_LIST[twIdx].slice(0, twSub) + (blink ? " |" : "  ");
 
-const [twIdx, setTwIdx] = useState(0);      // which phrase from TW_LIST
-const [twSub, setTwSub] = useState(0);      // how many chars of that phrase are shown
-const [twDeleting, setTwDeleting] = useState(false); // typing or deleting
-const [blink, setBlink] = useState(true);   // caret blink
+  // caret blink
+  useEffect(() => {
+    const t = setInterval(() => setBlink((b) => !b), 500);
+    return () => clearInterval(t);
+  }, []);
 
-// Compose the visible animated text (only the dynamic part types/deletes)
-const typewriter = TW_PREFIX + TW_LIST[twIdx].slice(0, twSub) + (blink ? " |" : "  ");
+  // typing/deleting loop (paused when user has typed something)
+  useEffect(() => {
+    if (prompt) return; // pause when user is typing
+    const full = TW_LIST[twIdx];
+    const typingDelay = 150;
+    const deletingDelay = 25;
+    const holdAtEnd = 450;
+    const holdAtStart = 120;
 
-// caret blink
-useEffect(() => {
-  const t = setInterval(() => setBlink((b) => !b), 500);
-  return () => clearInterval(t);
-}, []);
-
-// typing/deleting loop (paused when user has typed something)
-useEffect(() => {
-  if (prompt) return; // if user started typing, pause the fake placeholder
-
-  const full = TW_LIST[twIdx];
-  const typingDelay = 150;    // ms per char when typing
-  const deletingDelay = 25;  // ms per char when deleting
-  const holdAtEnd = 450;     // pause when a word finishes
-  const holdAtStart = 120;   // tiny pause before next word
-
-  let timer;
-  if (!twDeleting) {
-    // typing
-    if (twSub < full.length) {
-      timer = setTimeout(() => setTwSub(twSub + 1), typingDelay);
+    let timer;
+    if (!twDeleting) {
+      if (twSub < full.length) {
+        timer = setTimeout(() => setTwSub(twSub + 1), typingDelay);
+      } else {
+        timer = setTimeout(() => setTwDeleting(true), holdAtEnd);
+      }
     } else {
-      // finished typing -> hold, then start deleting
-      timer = setTimeout(() => setTwDeleting(true), holdAtEnd);
+      if (twSub > 0) {
+        timer = setTimeout(() => setTwSub(twSub - 1), deletingDelay);
+      } else {
+        timer = setTimeout(() => {
+          setTwDeleting(false);
+          setTwIdx((twIdx + 1) % TW_LIST.length);
+        }, holdAtStart);
+      }
     }
-  } else {
-    // deleting
-    if (twSub > 0) {
-      timer = setTimeout(() => setTwSub(twSub - 1), deletingDelay);
-    } else {
-      // finished deleting -> next word, start typing
-      timer = setTimeout(() => {
-        setTwDeleting(false);
-        setTwIdx((twIdx + 1) % TW_LIST.length);
-      }, holdAtStart);
+    return () => clearTimeout(timer);
+  }, [prompt, twIdx, twSub, twDeleting]);
+
+  // observe bottom visibility (for a future "jump to latest")
+  useEffect(() => {
+    if (!chatEndRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const nearBottom = entry.isIntersecting;
+        atBottomRef.current = nearBottom;
+        setShowJump(!nearBottom);
+      },
+      { root: null, threshold: 0.01, rootMargin: "0px 0px -96px 0px" }
+    );
+    observer.observe(chatEndRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // auth changes → clear cross-account state
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (currentUser) => {
+      const newUid = currentUser?.uid || null;
+      const prevUid = prevUidRef.current;
+      if (newUid !== prevUid) {
+        clearConversationState();
+      }
+      setUser(currentUser);
+      prevUidRef.current = newUid;
+    });
+    return () => unsub();
+  }, []);
+
+  // after login, auto-send pending
+  useEffect(() => {
+    if (user && pendingPrompt) {
+      const toSend = pendingPrompt;
+      const imgs = pendingImages;
+      setPendingPrompt("");
+      setPendingImages([]);
+      setAuthOpen(false);
+      setView("chat");
+      setTimeout(() => {
+        sendMessageStream(toSend, imgs);
+        setPrompt("");
+        setImages([]);
+        setFigmas([]);
+      }, 0);
     }
-  }
+  }, [user, pendingPrompt, pendingImages]);
 
-  return () => clearTimeout(timer);
-}, [prompt, twIdx, twSub, twDeleting]);
+  // cleanup on unmount
+  useEffect(() => () => stopStreaming(), []);
 
-  
-  // 20s "no data" guard for streaming
-const STREAM_TIMEOUT_MS = 20000;
+  // stop streaming when leaving chat
+  useEffect(() => {
+    if (view === "home") {
+      stopStreaming();
+    }
+  }, [view]);
 
+  const resetPhoneAuth = () => {
+    setPhone(""); setOtp(""); setOtpSent(false); setConfirmation(null);
+    try {
+      if (typeof window !== "undefined" && window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear?.();
+        window.recaptchaVerifier = null;
+      }
+    } catch {}
+  };
+
+  const handleGoogleLogin = async () => {
+    try { await signInWithPopup(auth, googleProvider); resetPhoneAuth(); setAuthOpen(false); }
+    catch (err) { console.error(err); }
+  };
+  const handleLogout = async () => {
+    try { await signOut(auth); }
+    catch (err) { console.error(err); }
+    finally {
+      resetPhoneAuth();
+      setAuthOpen(false);
+      clearConversationState();
+      setView("home");
+    }
+  };
+
+  const sendOtp = async () => {
+    try {
+      if (typeof window !== "undefined" && !window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+      }
+      const confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
+      setConfirmation(confirmationResult); setOtpSent(true);
+    } catch (err) {
+      console.error("OTP error:", err); alert("Failed to send OTP. Format: +91xxxxxxxxxx");
+    }
+  };
+  const verifyOtp = async () => {
+    try { if (confirmation) { await confirmation.confirm(otp); resetPhoneAuth(); setAuthOpen(false); } }
+    catch (err) { console.error("OTP verify error:", err); alert("Invalid OTP"); }
+  };
 
   const resizeTextarea = () => {
     const el = textareaRef.current; if (!el) return;
@@ -401,7 +473,6 @@ const STREAM_TIMEOUT_MS = 20000;
     el.style.height = next + "px";
     el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
   };
-
   useEffect(() => { resizeTextarea(); }, [prompt]);
 
   const resizeChatTextarea = () => {
@@ -411,13 +482,12 @@ const STREAM_TIMEOUT_MS = 20000;
     el.style.height = next + "px";
     el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
   };
-
   useEffect(() => { resizeChatTextarea(); }, [chatInput]);
 
   // type anywhere to focus active input
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+      if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName || "")) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (view === "home" && textareaRef.current) textareaRef.current.focus();
       if (view === "chat" && chatTextareaRef.current) chatTextareaRef.current.focus();
@@ -427,12 +497,9 @@ const STREAM_TIMEOUT_MS = 20000;
   }, [view]);
 
   // auto focus chat box when entering chat view
-  useEffect(() => {
-    if (view === "chat") {
-      chatTextareaRef.current?.focus();
-    }
-  }, [view]);
+  useEffect(() => { if (view === "chat") chatTextareaRef.current?.focus(); }, [view]);
 
+  // popover toggles
   useEffect(() => {
     if (!showAttach) return;
     const onClick = (e) => { if (attachRef.current && !attachRef.current.contains(e.target)) setShowAttach(false); };
@@ -441,7 +508,6 @@ const STREAM_TIMEOUT_MS = 20000;
     document.addEventListener("keydown", onEsc);
     return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
   }, [showAttach]);
-
   useEffect(() => {
     if (!showChatAttach) return;
     const onClick = (e) => { if (chatAttachRef.current && !chatAttachRef.current.contains(e.target)) setShowChatAttach(false); };
@@ -451,6 +517,7 @@ const STREAM_TIMEOUT_MS = 20000;
     return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
   }, [showChatAttach]);
 
+  // file pickers
   const onAddImageClick = () => { fileInputRef.current?.click(); setShowAttach(false); };
   const onFilesPicked = (e) => {
     const files = Array.from(e.target.files || []);
@@ -485,47 +552,45 @@ const STREAM_TIMEOUT_MS = 20000;
   const removeChatImage = (i) => setChatImages((prev) => prev.filter((_, idx) => idx !== i));
   const removeChatFigma = (i) => setChatFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
-  // streaming helpers
+  // helpers
   const addAssistantPlaceholder = () => {
     const id = Date.now() + Math.random();
-    setMessages((prev) => [...prev, { id, role: "assistant", content: "" }]);
+    setMessages((prev) => [...prev, { id, role: "assistant", content: "", streaming: true }]);
     return id;
   };
+
   const appendToAssistant = (id, chunk) => {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: (m.content || "") + (chunk || "") } : m)));
   };
+  const scrollMessageToTop = (msgId) => {
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`msg-${msgId}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
-// Snap a message to the TOP of the viewport
-const scrollMessageToTop = (msgId) => {
-  requestAnimationFrame(() => {
-    const el = document.getElementById(`msg-${msgId}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-};
+  const stopStreaming = (reason = "manual-stop") => {
+    try { streamAbortRef.current?.abort?.(reason); } catch {}
+    streamAbortRef.current = null;
+    setIsStreaming(false);
+    setPhase(null);
+  };
 
-const stopStreaming = (reason = "manual-stop") => {
-  try { streamAbortRef.current?.abort?.(reason); } catch {}
-  streamAbortRef.current = null;
-  setIsStreaming(false);
-  setPhase(null);
-};
-
-
-  // Wipe all in-memory chat/UI state when user changes
-const clearConversationState = () => {
-  stopStreaming();
-  setMessages([]);
-  setChatInput("");
-  setPrompt("");
-  setImages([]);
-  setChatImages([]);
-  setFigmas([]);
-  setChatFigmas([]);
-  setCode("");
-  setIsStreaming(false);
-  setPhase(null);
-};
+  // wipe all UI/chat state
+  const clearConversationState = () => {
+    stopStreaming();
+    setMessages([]);
+    setChatInput("");
+    setPrompt("");
+    setImages([]);
+    setChatImages([]);
+    setFigmas([]);
+    setChatFigmas([]);
+    setCode("");
+    setIsStreaming(false);
+    setPhase(null);
+  };
 
   // non-stream fallback (HOME only)
   async function sendMessage(text) {
@@ -535,17 +600,9 @@ const clearConversationState = () => {
       const formData = new FormData();
       formData.append("prompt", text);
       formData.append("history", JSON.stringify(messages.slice(-8)));
+      images.forEach((img) => formData.append("images", img.file, img.name));
 
-      // add attached images from HOME composer
-      images.forEach((img) => {
-        formData.append("images", img.file, img.name);
-      });
-
-      const res = await fetch(`${API_URL}/api/generate`, {
-        method: "POST",
-        body: formData,
-      });
-
+      const res = await fetch(`${API_URL}/api/generate`, { method: "POST", body: formData });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const reply = data.reply || data.code || "";
@@ -555,186 +612,224 @@ const clearConversationState = () => {
     }
   }
 
-// streaming via fetch + FormData (supports images) — robust, no auto-scroll at end
-// streaming via fetch + FormData (supports images) — type-to-interrupt capable
-async function sendMessageStream(text, attachments = []) {
-  // 1) push user message
-  const userId = Date.now();
-  setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
+  // STREAMING via fetch + FormData (supports images) — idle-based timeout
+  async function sendMessageStream(text, attachments = []) {
+    const userId = Date.now();
+    setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
+    const asstId = addAssistantPlaceholder();
+    setPhase("connecting");
+    // reset streaming buffer for this message
+    streamBufRef.current.buf = "";
+    if (streamBufRef.current.t) 
+    { clearTimeout(streamBufRef.current.t); 
+      streamBufRef.current.t = null; }
 
-  // 2) add assistant placeholder
-  const asstId = addAssistantPlaceholder();
-  setPhase("connecting");
+    scrollMessageToTop(userId);
 
-  // 3) snap the just-sent user bubble to top
-  scrollMessageToTop(userId);
-
-  // 4) prepare payload (include last 8 messages + any images)
-  const hist = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
-  const formData = new FormData();
-  formData.append("prompt", text);
-  formData.append("history", JSON.stringify(hist));
-  attachments.forEach((img) => {
-    if (img?.file) formData.append("images", img.file, img.name || "image.png");
-  });
-
-  // timeout & abort wiring
-  const ac = new AbortController();
-  streamAbortRef.current = ac;
-  interruptedRef.current = false;
-  const STREAM_TIMEOUT_MS = 20000;
-  const timeout = setTimeout(() => ac.abort("stream-timeout"), STREAM_TIMEOUT_MS);
-
-  let gotAny = false;
-
-  try {
-    setIsStreaming(true);
-
-    const res = await fetch(`${API_URL}/api/stream-es`, {
-      method: "POST",
-      body: formData,
-      signal: ac.signal,
+    const hist = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
+    const formData = new FormData();
+    formData.append("prompt", text);
+    formData.append("history", JSON.stringify(hist));
+    attachments.forEach((img) => {
+      if (img?.file) formData.append("images", img.file, img.name || "image.png");
     });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    if (!res.body) throw new Error("No response body (streaming)");
+    const ac = new AbortController();
+    streamAbortRef.current = ac;
+    interruptedRef.current = false;
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let leftover = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunkStr = decoder.decode(value, { stream: true });
-      let data = leftover + chunkStr;
-      leftover = "";
-
-      // detect [DONE]
-      const doneIdx = data.indexOf("[DONE]");
-      if (doneIdx !== -1) {
-        const before = data.slice(0, doneIdx);
-        if (before) {
-          appendToAssistant(asstId, before);
-          if (/\S/.test(before)) gotAny = true;
-        }
-        break;
+    // timers — reset on every chunk
+    let idleTimer = null;
+    let hardCapTimer = null;
+    const armTimers = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => ac.abort("idle-timeout"), STREAM_INACTIVITY_MS);
+      if (!hardCapTimer && STREAM_MAX_DURATION_MS > 0) {
+        hardCapTimer = setTimeout(() => ac.abort("max-duration"), STREAM_MAX_DURATION_MS);
       }
+    };
+    const clearTimers = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (hardCapTimer) clearTimeout(hardCapTimer);
+      idleTimer = null; hardCapTimer = null;
+    };
 
-      if (data) {
-        appendToAssistant(asstId, data);
-        if (/\S/.test(data)) gotAny = true;
+    let gotAny = false;
 
-        // phase hints
-        if (/```|\b(import|class|def|function|const|let|var)\b/.test(data)) {
-          setPhase("coding");
-        } else if (!gotAny) {
-          setPhase("generating");
+    try {
+      setIsStreaming(true);
+      armTimers();
+
+      const res = await fetch(`${API_URL}/api/stream-es`, { method: "POST", body: formData, signal: ac.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.body) throw new Error("No response body (streaming)");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let leftover = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunkStr = decoder.decode(value, { stream: true });
+        let data = leftover + chunkStr;
+        leftover = "";
+
+        const doneIdx = data.indexOf("[DONE]");
+        if (doneIdx !== -1) {
+          const before = data.slice(0, doneIdx);
+          if (before) {
+            // buffer the final chunk BEFORE [DONE]
+            streamBufRef.current.buf += before;   // <-- use `before` here
+            scheduleFlush(asstId);
+            if (/\S/.test(before)) gotAny = true;
+          }
+
+          // force one last flush at the end of the stream
+          flushNow(asstId);
+          break;
         }
+
+        if (data) {
+          // buffer regular streaming chunks
+          streamBufRef.current.buf += data;       // <-- use `data` here
+          scheduleFlush(asstId);
+          if (/\S/.test(data)) gotAny = true;
+
+          // phase hints
+          if (/```|\b(import|class|def|function|const|let|var)\b/.test(data)) {
+            setPhase("coding");
+          } else if (!gotAny) {
+            setPhase("generating");
+          }
+        }
+
+        // reset idle timer on every chunk
+        armTimers();
       }
+    } catch (err) {
+      const msg = String(err?.name || err || "");
+      const reason = (err && "message" in err) ? String(err.message) : msg;
+      if (!/AbortError/i.test(msg) && !/AbortError/i.test(reason) && !/manual-stop|user-typed|new-message|stream-timeout|idle-timeout|max-duration/.test(reason)) {
+        appendToAssistant(asstId, `\n// stream error: ${String(err)}`);
+      }
+    } finally {
+      clearTimers();
+      if (streamAbortRef.current === ac) streamAbortRef.current = null;
+      if (!gotAny) {
+        appendToAssistant(asstId, "\n// (no content received — check server logs or network)");
+      }
+      setPhase(null);
+      setIsStreaming(false);
     }
-  } catch (err) {
-    // Silent on intentional aborts / timeout
-    const msg = String(err?.name || err || "");
-    const reason = (err && "message" in err) ? String(err.message) : msg;
-    if (!/AbortError/i.test(msg) && !/AbortError/i.test(reason) && !/manual-stop|user-typed|new-message|stream-timeout/.test(reason)) {
-      appendToAssistant(asstId, `\n// stream error: ${String(err)}`);
-    }
-  } finally {
-    clearTimeout(timeout);
-    if (streamAbortRef.current === ac) streamAbortRef.current = null;
-    if (!gotAny) {
-      // only add this if literally nothing arrived
-      appendToAssistant(asstId, "\n// (no content received — check server logs or network)");
-    }
-    setPhase(null);
-    setIsStreaming(false);
   }
-}
 
+  // HOME SUBMIT — clear input BEFORE sending
+  async function onSubmit(e) {
+    e.preventDefault();
+    // Optional: when user sends a new message, cancel the previous stream
+    if (isStreaming) stopStreaming("new-message");
 
+    if (!prompt.trim() && images.length === 0) return;
+    const first = prompt.trim();
+    const imgs = images;
 
-  // HOME SUBMIT
-// HOME SUBMIT
-// HOME SUBMIT — clear input BEFORE sending
-async function onSubmit(e) {
-  e.preventDefault();
-  if (isStreaming) stopStreaming("new-message"); // <-- ADD THIS LINE
+    if (!user) {
+      setPendingPrompt(first);
+      setPendingImages(imgs);
+      setPrompt("");
+      setImages([]);
+      setFigmas([]);
+      setAuthOpen(true);
+      return;
+    }
 
-  if (!prompt.trim() && images.length === 0) return;
-
-  const first = prompt.trim();
-  const imgs = images;
-
-  // If not logged in, stash and show auth
-  if (!user) {
-    setPendingPrompt(first);
-    setPendingImages(imgs);
-
-    // clear the composer immediately
     setPrompt("");
     setImages([]);
     setFigmas([]);
-
-    setAuthOpen(true);
-    return;
+    setView("chat");
+    setTimeout(() => sendMessageStream(first, imgs), 0);
   }
 
-  // clear BEFORE sending so UI empties instantly
-  setPrompt("");
-  setImages([]);
-  setFigmas([]);
+  // CHAT SEND — clear input BEFORE sending
+  const sendFromChat = (e) => {
+    e.preventDefault();
+    if (isStreaming) stopStreaming("new-message");
 
-  setView("chat");
+    if (!chatInput.trim() && chatImages.length === 0) return;
+    const txt = chatInput.trim();
+    const imgs = chatImages;
 
-  // fire-and-forget so the clear renders immediately
-  setTimeout(() => {
-    sendMessageStream(first, imgs);
-  }, 0);
-}
+    if (!user) {
+      setPendingPrompt(txt);
+      setPendingImages(imgs);
+      setChatInput("");
+      setChatImages([]);
+      setChatFigmas([]);
+      setAuthOpen(true);
+      return;
+    }
 
-
-
-  // CHAT SEND
-// CHAT SEND
-// CHAT SEND — clear input BEFORE sending
-const sendFromChat = (e) => {
-  e.preventDefault();
-  if (isStreaming) stopStreaming("new-message"); // <-- ADD THIS LINE
-
-  if (!chatInput.trim() && chatImages.length === 0) return;
-
-  const txt = chatInput.trim();
-  const imgs = chatImages; // preserve attachments
-
-  if (!user) {
-    // stash for after-login auto-send
-    setPendingPrompt(txt);
-    setPendingImages(imgs);
-
-    // clear chat composer immediately
     setChatInput("");
     setChatImages([]);
     setChatFigmas([]);
+    setTimeout(() => sendMessageStream(txt, imgs), 0);
+  };
 
-    setAuthOpen(true);
-    return;
-  }
+  // ===== helpers for “code / view / go live” =====
+  const getMsgById = (id) => messages.find((m) => m.id === id);
 
-  // clear BEFORE sending so the textarea empties right away
-  setChatInput("");
-  setChatImages([]);
-  setChatFigmas([]);
+  // first fenced code block extractor
+  const extractFirstCodeBlock = (text) => {
+    const m = (text || "").match(/```(\w+)?\n([\s\S]*?)```/);
+    if (!m) return { lang: "", code: "" };
+    return { lang: (m[1] || "").toLowerCase(), code: m[2] || "" };
+  };
 
-  // fire-and-forget
-  setTimeout(() => {
-    sendMessageStream(txt, imgs);
-  }, 0);
-};
+  // hide fenced code blocks from chat bubble
+  const stripFencedCodeBlocks = (text) => (text || "").replace(/```[\s\S]*?```/g, "");
 
+  const openCodeModal = (id) => {
+    const msg = getMsgById(id);
+    const { lang, code } = extractFirstCodeBlock(msg?.content || "");
+    setModal({ type: "code", msgId: id, code, lang, url: "", note: code ? "" : "No fenced code block found in this message." });
+  };
 
+  const openViewModal = (id) => {
+    const msg = getMsgById(id);
+    const { lang, code } = extractFirstCodeBlock(msg?.content || "");
+    let url = "", note = "";
+    if (lang === "html" && code) {
+      const blob = new Blob([code], { type: "text/html" });
+      url = URL.createObjectURL(blob);
+      if (previewUrlRef.current) try { URL.revokeObjectURL(previewUrlRef.current); } catch {}
+      previewUrlRef.current = url;
+    } else {
+      note = "Preview requires an HTML code block. Open Code to copy/run elsewhere.";
+    }
+    setModal({ type: "view", msgId: id, code, lang, url, note });
+  };
 
+  const openLiveModal = (id) => {
+    const msg = getMsgById(id);
+    const { lang, code } = extractFirstCodeBlock(msg?.content || "");
+    setModal({
+      type: "live",
+      msgId: id,
+      code,
+      lang,
+      url: "",
+      note: "Deploy flow coming soon. Export your code and deploy to Vercel/Netlify."
+    });
+  };
+
+  const closeModal = () => {
+    if (modal.url && modal.url.startsWith("blob:")) {
+      try { URL.revokeObjectURL(modal.url); } catch {}
+    }
+    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+  };
 
   return (
     <div className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col">
@@ -782,14 +877,13 @@ const sendFromChat = (e) => {
                 )}
 
                 {!prompt && (
-  <div
-    className="pointer-events-none absolute left-[18px] right-[18px] top-[12px] text-[16px] leading-[20px] text-[#9AA0A6] select-none"
-    aria-hidden="true"
-  >
-    {typewriter}
-  </div>
-)}
-
+                  <div
+                    className="pointer-events-none absolute left-[18px] right-[18px] top-[12px] text-[16px] leading-[20px] text-[#9AA0A6] select-none"
+                    aria-hidden="true"
+                  >
+                    {typewriter}
+                  </div>
+                )}
 
                 <textarea
                   ref={textareaRef}
@@ -799,7 +893,7 @@ const sendFromChat = (e) => {
                   onInput={resizeTextarea}
                   autoFocus
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); formRef.current?.requestSubmit(); } }}
-                                    className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
+                  className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
                   style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
                 />
 
@@ -861,15 +955,48 @@ const sendFromChat = (e) => {
                 const isAssistant = m.role === "assistant";
                 const hasContent = (m.content ?? "").trim() !== "";
 
+                // hide code from chat bubble
+                const cleaned = isAssistant ? stripFencedCodeBlocks(m.content || "") : (m.content || "");
+                const textToShow = (cleaned || "").trim() || (isAssistant ? "_generated code ready — use the buttons below._" : "");
+
                 return (
-                  <div  id={`msg-${m.id}`} key={m.id} className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}>
+                  <div id={`msg-${m.id}`} key={m.id} className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}>
                     <div
                       className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${isAssistant ? "bg-transparent text-[#EDEDED]" : "bg-[#1A1A1B] text-[#EDEDED]"}`}
                       style={{ overflowWrap: "anywhere" }}
                     >
                       {isAssistant ? (
                         hasContent ? (
-                          <Markdown>{m.content}</Markdown>
+                          <>
+                            <Markdown>{textToShow}</Markdown>
+
+                            {/* action bar (only after stream ends) */}
+                            {!isStreaming && (
+                              <div className="mt-3 flex flex-wrap items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => openCodeModal(m.id)}
+                                  className="px-4 py-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
+                                >
+                                  code
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openViewModal(m.id)}
+                                  className="px-4 py-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
+                                >
+                                  view
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openLiveModal(m.id)}
+                                  className="px-4 py-2 rounded-full bg-[#EA3838] hover:bg-[#ff3d3d] text-white"
+                                >
+                                  go live
+                                </button>
+                              </div>
+                            )}
+                          </>
                         ) : isStreaming ? (
                           <div
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]"
@@ -922,7 +1049,7 @@ const sendFromChat = (e) => {
                     onChange={(e) => setChatInput(e.target.value)}
                     onInput={resizeChatTextarea}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); chatFormRef.current?.requestSubmit(); } }}
-                    placeholder="build anything fantasic."
+                    placeholder="build anything fantastic."
                     className="w-full bg-transparent outline-none text-[16px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
                     style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
                   />
@@ -952,6 +1079,44 @@ const sendFromChat = (e) => {
               </form>
             </Container>
           </div>
+
+          {/* ===== ACTION MODALS ===== */}
+          <Modal open={modal.type === "code"} onClose={closeModal} title="Code">
+            <div className="w-full h-full overflow-auto p-3">
+              {modal.code
+                ? <Markdown>{` \`\`\`${modal.lang || ""}\n${modal.code}\n\`\`\` `}</Markdown>
+                : <div className="p-4 text-[#c7cbd2]">{modal.note}</div>
+              }
+            </div>
+          </Modal>
+
+          <Modal open={modal.type === "view"} onClose={closeModal} title="Preview">
+            {modal.url
+              ? <iframe src={modal.url} className="w-full h-full" />
+              : <div className="p-4 text-[#c7cbd2]">{modal.note}</div>
+            }
+          </Modal>
+
+          <Modal open={modal.type === "live"} onClose={closeModal} title="Go live">
+            <div className="w-full h-full overflow-auto p-4 text-[#EDEDED]">
+              <p>{modal.note}</p>
+              {modal.code && (
+                <>
+                  <p className="mt-4 mb-2 text-sm text-[#c7cbd2]">quick copy:</p>
+                  <pre className="mb-0 rounded-[12px] bg-[#0f0f10] border border-[#2A2A2A] overflow-x-auto p-3 text-xs">
+                    {modal.code}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard?.writeText(modal.code)}
+                    className="mt-3 px-4 py-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325]"
+                  >
+                    copy code
+                  </button>
+                </>
+              )}
+            </div>
+          </Modal>
         </>
       )}
 
@@ -991,7 +1156,7 @@ const sendFromChat = (e) => {
 
                 {!otpSent ? (
                   <>
-                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" className="w-full px-3 py-2 rounded-lg border border-gray-600 bg白 text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     <button onClick={sendOtp} className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg">send OTP</button>
                   </>
                 ) : (
@@ -1006,7 +1171,7 @@ const sendFromChat = (e) => {
             <div id="recaptcha-container"></div>
 
             <p className="text-gray-400 text-xs mt-6">
-              privacy policy • terms &amp; use • type it. see it. launch it.<br />
+              privacy policy • terms &amp; use • type it. see it.<br />
               your ideas live in seconds. surfers codes anything better. faster.<br />
               © 2025 surfers
             </p>
@@ -1016,5 +1181,16 @@ const sendFromChat = (e) => {
         </div>
       )}
     </div>
+  );
+}
+
+/**********************
+ * Export default wrapped with ErrorBoundary
+ **********************/
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <SurfersApp />
+    </ErrorBoundary>
   );
 }

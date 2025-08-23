@@ -34,34 +34,14 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 24, color: "#eee", background: "#0B0B0C", minHeight: "100vh" }}>
-          <div
-            style={{
-              maxWidth: 720,
-              margin: "40px auto",
-              background: "#121214",
-              border: "1px solid #2A2A2A",
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
+          <div style={{
+            maxWidth: 720, margin: "40px auto", background: "#121214",
+            border: "1px solid #2A2A2A", borderRadius: 16, padding: 16,
+          }}>
             <h2 style={{ marginTop: 0 }}>something broke. 😵‍💫</h2>
-            <p style={{ opacity: 0.8 }}>
-              the app hit a runtime error but stayed up thanks to the error boundary.
-            </p>
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                background: "#0f0f10",
-                padding: 12,
-                borderRadius: 12,
-                border: "1px solid #2A2A2A",
-              }}
-            >
-              {this.state.msg}
-            </pre>
-            <p style={{ opacity: 0.7, fontSize: 12 }}>
-              check the console for stack trace (DevTools ▶ Console).
-            </p>
+            <p style={{ opacity: 0.8 }}>the app hit a runtime error but stayed up thanks to the error boundary.</p>
+            <pre style={{ whiteSpace: "pre-wrap", background: "#0f0f10", padding: 12, borderRadius: 12, border: "1px solid #2A2A2A" }}>{this.state.msg}</pre>
+            <p style={{ opacity: 0.7, fontSize: 12 }}>check the console for stack trace (DevTools ▶ Console).</p>
           </div>
         </div>
       );
@@ -79,9 +59,6 @@ const Container = ({ children, className = "" }) => (
   </div>
 );
 
-/**********************
- * Icons / Logos
- **********************/
 const LogoSmall = ({ className = "h-5 w-5" }) => (
   <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
     <circle cx="32" cy="32" r="30" fill="#2BA6FF" />
@@ -101,7 +78,6 @@ const BackArrow = ({ className = "h-5 w-5" }) => (
     <path d="M15 6l-6 6 6 6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-
 const ImageIcon = ({ className = "h-4 w-4" }) => (
   <svg viewBox="0 0 20 20" className={className} fill="none" aria-hidden="true">
     <rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="#2B2B2B" />
@@ -123,72 +99,15 @@ const Spinner = ({ className = "h-4 w-4" }) => (
     <g fill="none" stroke="#C8CCD2" strokeWidth="2">
       <circle cx="12" cy="12" r="9" opacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9">
-        <animateTransform
-          attributeName="transform"
-          type="rotate"
-          from="0 12 12"
-          to="360 12 12"
-          dur="0.5s"
-          repeatCount="indefinite"
-        />
+        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.5s" repeatCount="indefinite" />
       </path>
     </g>
   </svg>
 );
 
-/* icons for go-live modal */
-const CopyIcon = ({ active }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="9" y="9" width="11" height="11" rx="2" stroke={active ? "#1a73e8" : "#9AA0A6"} strokeWidth="1.6"/>
-    <rect x="4" y="4" width="11" height="11" rx="2" stroke={active ? "#1a73e8" : "#9AA0A6"} strokeWidth="1.6" opacity="0.7"/>
-  </svg>
-);
-const ExtLinkIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M14 5h5v5" stroke="#9AA0A6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M10 14L19 5" stroke="#9AA0A6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M19 14v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" stroke="#9AA0A6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-/**********************
- * Modal
- **********************/
-const Modal = ({ open, onClose, title, rightEl, children }) => {
-  // lock body scroll while modal is open (no visible design change)
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80">
-      <div className="relative w-[min(980px,94vw)] h-[min(82vh,760px)] rounded-2xl border border-[#2A2A2A] bg-[#0B0B0C] p-4">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 h-8 w-8 rounded-full bg-[#121214] text-[#EDEDED] hover:bg-[#1A1A1B]"
-          aria-label="close"
-        >
-          ×
-        </button>
-        <div className="flex items-center justify-between mb-3">
-          {title && <h3 className="text-lg text-[#EDEDED]">{title}</h3>}
-          {rightEl || null}
-        </div>
-        <div className="w-full h-[calc(100%-40px)] overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#111214]">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/**********************
- * Markdown with safe code highlight
- **********************/
+/* =========================
+   Markdown + Code highlight
+   ========================= */
 function CodeBlock({ inline, className, children, ...props }) {
   const codeRef = useRef(null);
   const raw = Array.isArray(children) ? children.join("") : (children ?? "");
@@ -219,9 +138,7 @@ function CodeBlock({ inline, className, children, ...props }) {
       .catch(() => {
         if (codeRef.current) codeRef.current.textContent = raw;
       });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [raw, lang]);
 
   if (inline) {
@@ -256,22 +173,12 @@ function Markdown({ children }) {
           />
         ),
         p: ({ node, ...props }) => <p {...props} className="mb-3" />,
-        ul: ({ node, ...props }) => (
-          <ul {...props} className="list-disc pl-5 mb-3 space-y-1" />
-        ),
-        ol: ({ node, ...props }) => (
-          <ol {...props} className="list-decimal pl-5 mb-3 space-y-1" />
-        ),
+        ul: ({ node, ...props }) => <ul {...props} className="list-disc pl-5 mb-3 space-y-1" />,
+        ol: ({ node, ...props }) => <ol {...props} className="list-decimal pl-5 mb-3 space-y-1" />,
         li: ({ node, ...props }) => <li {...props} className="leading-6" />,
-        h1: ({ node, ...props }) => (
-          <h1 {...props} className="text-xl font-semibold mb-2 mt-3" />
-        ),
-        h2: ({ node, ...props }) => (
-          <h2 {...props} className="text-lg font-semibold mb-2 mt-3" />
-        ),
-        h3: ({ node, ...props }) => (
-          <h3 {...props} className="text-base font-semibold mb-2 mt-3" />
-        ),
+        h1: ({ node, ...props }) => <h1 {...props} className="text-xl font-semibold mb-2 mt-3" />,
+        h2: ({ node, ...props }) => <h2 {...props} className="text-lg font-semibold mb-2 mt-3" />,
+        h3: ({ node, ...props }) => <h3 {...props} className="text-base font-semibold mb-2 mt-3" />,
         blockquote: ({ node, ...props }) => (
           <blockquote
             {...props}
@@ -286,18 +193,18 @@ function Markdown({ children }) {
   );
 }
 
-/**********************
- * STREAM CONSTANTS
- **********************/
+/* =========================
+   Stream constants
+   ========================= */
 const STREAM_INACTIVITY_MS = 25000;
 const STREAM_MAX_DURATION_MS = 180000;
-const VERSION_TAG = "app-parse+stream v2.4";
+const VERSION_TAG = "app modal rev - 2025-08-23";
 
-/**********************
- * ROBUST CODE PARSERS
- **********************/
+/* =========================
+   Code extraction helpers
+   ========================= */
 const FENCE_GLOBAL_RE = /```(\w+)?\n([\s\S]*?)```/g;
-const INLINE_LANG_LINE_RE = /^\s*(html?|css|js|javascript|typescript)\s*:?\s*$/i;
+const INLINE_LANG_RE = /^\s*(html?|css|js|javascript|typescript)\s*:?\s*$/i;
 
 function collectFencedBlocks(text) {
   const out = [];
@@ -325,8 +232,8 @@ function splitByHeadings(text) {
   let current = null;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (INLINE_LANG_LINE_RE.test(line)) {
-      current = line.trim().replace(/:$/, "").toLowerCase();
+    if (INLINE_LANG_RE.test(line)) {
+      current = line.trim().replace(/:$/,"").toLowerCase();
       if (current === "javascript") current = "js";
       if (current === "htm") current = "html";
       if (!sections[current]) sections[current] = [];
@@ -346,9 +253,7 @@ function assembleHtml({ html, css, js }) {
   if (!html) {
     const headBits = [];
     if (css) headBits.push(`<style>\n${css}\n</style>`);
-    const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${
-      headBits.length ? "\n" + headBits.join("\n") : ""
-    }`;
+    const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${headBits.length ? "\n" + headBits.join("\n") : ""}`;
     const bodyScript = js ? `\n<script>\n${js}\n</script>` : "";
     return `<!DOCTYPE html>
 <html><head>${head}</head><body>${bodyScript}</body></html>`;
@@ -358,10 +263,7 @@ function assembleHtml({ html, css, js }) {
     if (/<\/head>/i.test(result)) {
       result = result.replace(/<\/head>/i, `<style>\n${css}\n</style>\n</head>`);
     } else {
-      result = result.replace(
-        /<html[^>]*>/i,
-        `$&\n<head><style>\n${css}\n</style></head>`
-      );
+      result = result.replace(/<html[^>]*>/i, `$&\n<head><style>\n${css}\n</style></head>`);
     }
   }
   if (js) {
@@ -378,26 +280,16 @@ function parseGeneratedCode(fullText) {
   const text = fullText || "";
 
   const fenced = collectFencedBlocks(text);
-  const fencedHtml = fenced.filter((b) => b.lang === "html" || b.lang === "htm");
-  const fencedCss = fenced.filter((b) => b.lang === "css");
-  const fencedJs = fenced.filter(
-    (b) =>
-      b.lang === "js" ||
-      b.lang === "javascript" ||
-      b.lang === "ts" ||
-      b.lang === "typescript"
-  );
+  const fencedHtml = fenced.filter(b => (b.lang === "html" || b.lang === "htm"));
+  const fencedCss  = fenced.filter(b => b.lang === "css");
+  const fencedJs   = fenced.filter(b => b.lang === "js" || b.lang === "javascript" || b.lang === "ts" || b.lang === "typescript");
 
   const htmlFrag = findHtmlFragment(text);
   if (htmlFrag) {
-    const css = fencedCss.map((b) => b.code).join("\n\n").trim();
-    const js = fencedJs.map((b) => b.code).join("\n\n").trim();
-    const merged = assembleHtml({
-      html: htmlFrag,
-      css: css || null,
-      js: js || null,
-    });
-    return { lang: "html", code: merged, source: "html-fragment+merge" };
+    const css = fencedCss.map(b => b.code).join("\n\n").trim();
+    const js  = fencedJs.map(b => b.code).join("\n\n").trim();
+    const merged = assembleHtml({ html: htmlFrag, css: css || null, js: js || null });
+    return { lang: "html", code: merged };
   }
 
   const sections = splitByHeadings(text);
@@ -405,97 +297,306 @@ function parseGeneratedCode(fullText) {
     const merged = assembleHtml({
       html: sections.html || null,
       css: sections.css || null,
-      js:
-        sections.js ||
-        sections.javascript ||
-        sections.ts ||
-        sections.typescript ||
-        null,
+      js: sections.js || sections.javascript || sections.ts || sections.typescript || null,
     });
-    return { lang: "html", code: merged, source: "headings-merge" };
+    return { lang: "html", code: merged };
   }
 
   if (fenced.length) {
-    const htmlLongest =
-      fencedHtml.sort((a, b) => b.code.length - a.code.length)[0]?.code || null;
-    const cssMerged = fencedCss.map((b) => b.code).join("\n\n").trim() || null;
-    const jsMerged = fencedJs.map((b) => b.code).join("\n\n").trim() || null;
-    const merged = assembleHtml({
-      html: htmlLongest,
-      css: cssMerged,
-      js: jsMerged,
-    });
-    return {
-      lang: "html",
-      code: merged,
-      source: htmlLongest ? "fenced-html-merge" : "fenced-scaffold",
-    };
+    const htmlLongest = fencedHtml.sort((a,b)=>b.code.length-a.code.length)[0]?.code || null;
+    const cssMerged = fencedCss.map(b => b.code).join("\n\n").trim() || null;
+    const jsMerged  = fencedJs.map(b => b.code).join("\n\n").trim() || null;
+    const merged = assembleHtml({ html: htmlLongest, css: cssMerged, js: jsMerged });
+    return { lang: "html", code: merged };
   }
 
-  const maybeTagIdx = text.search(
-    /<(!DOCTYPE|html|head|body|canvas|div|section|main|script|style)\b/i
-  );
+  const maybeTagIdx = text.search(/<(!DOCTYPE|html|head|body|canvas|div|section|main|script|style)\b/i);
   if (maybeTagIdx !== -1) {
     const tail = text.slice(maybeTagIdx).trim();
-    return { lang: "html", code: tail, source: "html-tail" };
+    return { lang: "html", code: tail };
   }
 
   const js = text.trim();
   const html = assembleHtml({ js });
-  return { lang: "html", code: html, source: "fallback-js-scaffold" };
+  return { lang: "html", code: html };
 }
 
-/**********************
- * Helpers
- **********************/
-const sanitizeSlugClient = (s) =>
-  String(s || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 64) || "proj";
+/* =========================
+   Stream ingestor (raw/SSE/ndjson)
+   ========================= */
+function makeStreamIngestor(onText, onDone) {
+  let mode = "unknown"; // raw | sse | ndjson
+  let buf = "";
 
-/**********************
- * MAIN APP
- **********************/
+  function handleRaw(s) { onText(s); }
+  function handleSSE(s) {
+    buf += s;
+    const parts = buf.split(/\n\n/);
+    buf = parts.pop() ?? "";
+    for (const part of parts) {
+      const lines = part.split(/\r?\n/);
+      for (const line of lines) {
+        const m = line.match(/^\s*data:\s?(.*)$/);
+        if (!m) continue;
+        const payload = m[1];
+        if (payload === "[DONE]") { onDone?.(); return; }
+        if (!payload) continue;
+        if (payload.trim().startsWith("{")) {
+          try {
+            const j = JSON.parse(payload);
+            const t = j?.delta ?? j?.text ?? j?.content ?? j?.choices?.[0]?.delta?.content ?? "";
+            if (t) onText(t);
+          } catch { onText(payload); }
+        } else {
+          onText(payload);
+        }
+      }
+    }
+  }
+  function handleNDJSON(s) {
+    buf += s;
+    const lines = buf.split(/\r?\n/);
+    buf = lines.pop() ?? "";
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) continue;
+      try {
+        const j = JSON.parse(t);
+        const out = j?.delta ?? j?.text ?? j?.content ?? j?.choices?.[0]?.delta?.content ?? "";
+        if (out) onText(out);
+      } catch { onText(t); }
+    }
+  }
+
+  return {
+    feed(chunk) {
+      if (mode === "unknown") {
+        const probe = buf + chunk;
+        if (/^\s*data:/m.test(probe)) mode = "sse";
+        else if (probe.trim().startsWith("{") || probe.includes("\n{")) mode = "ndjson";
+        else mode = "raw";
+      }
+      if (mode === "sse") return handleSSE(chunk);
+      if (mode === "ndjson") return handleNDJSON(chunk);
+      return handleRaw(chunk);
+    },
+    end() {
+      if (mode === "ndjson" && buf.trim()) {
+        try {
+          const j = JSON.parse(buf.trim());
+          const out = j?.delta ?? j?.text ?? j?.content ?? j?.choices?.[0]?.delta?.content ?? "";
+          if (out) onText(out);
+        } catch { onText(buf); }
+      } else if (mode === "sse") {
+        handleSSE("\n\n");
+      }
+      onDone?.();
+    }
+  };
+}
+
+/* =========================
+   MODALS — brand new
+   ========================= */
+
+// Generic overlay
+const Overlay = ({ children, onClose }) => (
+  <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70">
+    <button
+      aria-label="close overlay"
+      onClick={onClose}
+      className="fixed top-4 right-4 h-9 w-9 rounded-full bg-[#1a1a1b] text-[#e5e7eb] hover:bg-[#232325]"
+    >
+      ×
+    </button>
+    {children}
+  </div>
+);
+
+// VIEW modal (window-style)
+const ViewModal = ({ open, url, onClose }) => {
+  if (!open) return null;
+  const label = (() => {
+    try {
+      const u = new URL(url);
+      return `${u.host}${u.pathname}`;
+    } catch {
+      return url || "";
+    }
+  })();
+  return (
+    <Overlay onClose={onClose}>
+      <div className="w-[min(1050px,95vw)] h-[min(86vh,820px)] rounded-2xl overflow-hidden shadow-2xl border border-[#2A2A2A] bg-[#1b1b1c]">
+        <div className="h-10 flex items-center justify-center bg-[#2a2a2b] text-[#d2d5db] text-sm relative">
+          <div className="absolute left-3 top-0 h-10 flex items-center gap-1">
+            <span className="inline-block h-3 w-3 rounded-full bg-[#ff5f57]" />
+            <span className="inline-block h-3 w-3 rounded-full bg-[#febc2e]" />
+            <span className="inline-block h-3 w-3 rounded-full bg-[#28c840]" />
+          </div>
+          <span className="opacity-80">{label || "preview"}</span>
+        </div>
+        <div className="w-full h-[calc(100%-40px)] bg-[#0f0f10]">
+          {url ? (
+            <iframe
+              key={url}
+              src={url}
+              className="w-full h-full"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+              allow="accelerometer; camera; microphone; clipboard-read; clipboard-write; geolocation; gyroscope; payment; fullscreen"
+              referrerPolicy="no-referrer"
+              title="preview"
+            />
+          ) : (
+            <div className="p-6 text-[#c7cbd2]">building preview…</div>
+          )}
+        </div>
+      </div>
+    </Overlay>
+  );
+};
+
+// CODE modal (editor-like)
+const CodeModal = ({ open, lang, code, onClose }) => {
+  if (!open) return null;
+  return (
+    <Overlay onClose={onClose}>
+      <div className="w-[min(980px,94vw)] h-[min(82vh,760px)] rounded-2xl overflow-hidden shadow-2xl border border-[#2A2A2A] bg-[#111214]">
+        <div className="h-10 bg-[#1b1b1c] border-b border-[#2A2A2A] flex items-center">
+          <div className="px-3 text-xs text-[#9aa0a6]">download as ZIP</div>
+          <div className="ml-2 flex items-center gap-2 text-sm">
+            <div className="px-3 py-1 bg-[#0f0f10] text-[#e5e7eb] rounded-t-md border-x border-t border-[#2A2A2A]">index.html</div>
+            <div className="px-3 py-1 text-[#9aa0a6]">README.md</div>
+            <div className="px-3 py-1 text-[#9aa0a6]">.gitignore</div>
+          </div>
+        </div>
+        <div className="w-full h-[calc(100%-40px)] overflow-auto">
+          {code ? (
+            <div className="p-4">
+              <Markdown>{` \`\`\`${lang || ""}\n${code}\n\`\`\` `}</Markdown>
+            </div>
+          ) : (
+            <div className="p-6 text-[#c7cbd2]">No code found in this message.</div>
+          )}
+        </div>
+      </div>
+    </Overlay>
+  );
+};
+
+// LIVE modal (go live. yeah.)
+const LiveModal = ({
+  open, onClose, slug, setSlug, busy, note, onPublish, baseSuffix = ".surfers.co.in",
+  onCheck, avail
+}) => {
+  if (!open) return null;
+  const full = slug ? `${slug}${baseSuffix}` : `project-name${baseSuffix}`;
+  return (
+    <Overlay onClose={onClose}>
+      <div className="w-[min(720px,92vw)] rounded-2xl bg-white text-[#222] shadow-2xl p-8 relative">
+        <button
+          aria-label="close"
+          onClick={onClose}
+          className="absolute right-5 top-5 text-2xl leading-none text-[#6b7280] hover:text-[#111]"
+        >×</button>
+
+        <h2 className="text-[48px] font-extrabold tracking-tight mb-6">
+          <span className="text-[#333]">go live.</span>{" "}
+          <span className="text-[#ff354a]">yeah.</span>
+        </h2>
+
+        <div className="mb-2">
+          <div className="flex items-stretch gap-2">
+            <div className="flex-1 relative">
+              <input
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase())}
+                placeholder="project-name"
+                className="w-full h-12 rounded-xl border border-gray-300 px-4 pr-[160px] text-lg outline-none focus:ring-2 focus:ring-red-400"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 select-none">
+                {baseSuffix}
+              </div>
+            </div>
+            <button
+              onClick={() => navigator.clipboard?.writeText(full)}
+              className="h-12 w-12 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
+              title="copy full domain"
+            >
+              📋
+            </button>
+          </div>
+
+          <div className="mt-2">
+            <button
+              onClick={onCheck}
+              className="text-[#1a73e8] text-sm underline underline-offset-2"
+              type="button"
+            >
+              check the availability of domain
+            </button>
+            {avail === "free" && <span className="ml-2 text-green-600 text-sm">available ✓</span>}
+            {avail === "taken" && <span className="ml-2 text-red-600 text-sm">already in use</span>}
+          </div>
+        </div>
+
+        <button
+          onClick={onPublish}
+          disabled={busy || !slug}
+          className={`mt-4 w-full h-14 rounded-xl text-white text-lg font-semibold ${
+            busy ? "bg-red-300" : "bg-[#EF3A3A] hover:bg-[#ff3d3d]"
+          }`}
+        >
+          {busy ? "publishing…" : "go live. fast dude."}
+        </button>
+
+        <p className="text-gray-600 mt-4">
+          making your website live will enable anyone to use it anywhere.
+        </p>
+
+        {note && <p className="mt-3 text-sm text-gray-700">{note}</p>}
+      </div>
+    </Overlay>
+  );
+};
+
+/* =========================
+   MAIN APP
+   ========================= */
 function SurfersApp() {
-  // ---- View routing ----
+  // routing
   const [view, setView] = useState("home");
 
-  // ---- Prompt state (home) ----
+  // home prompt
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState("");
 
-  // attachments (home)
-  const [images, setImages] = useState([]); // {file, url, name}
+  // attachments
+  const [images, setImages] = useState([]);
   const [figmas, setFigmas] = useState([]);
   const [showAttach, setShowAttach] = useState(false);
 
-  // ---- Auth state ----
+  // auth
   const [authOpen, setAuthOpen] = useState(false);
   const [user, setUser] = useState(null);
 
-  // Phone OTP states
+  // phone otp
   const [phone, setPhone] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [confirmation, setConfirmation] = useState(null);
 
-  // ---- Chat state ----
+  // chat
   const [messages, setMessages] = useState([]); // {id, role, content}
   const [chatInput, setChatInput] = useState("");
 
-  // streaming control
+  // streaming
   const [isStreaming, setIsStreaming] = useState(false);
   const [phase, setPhase] = useState(null);
   const atBottomRef = useRef(true);
-  const [showJump, setShowJump] = useState(false);
 
   const streamAbortRef = useRef(null);
   const streamBufRef = useRef({ buf: "", t: null });
-
   const flushNow = (asstId) => {
     if (!streamBufRef.current.buf) return;
     appendToAssistant(asstId, streamBufRef.current.buf);
@@ -510,67 +611,45 @@ function SurfersApp() {
   };
 
   const prevUidRef = useRef(null);
-
-  // chat attachments
-  const [chatImages, setChatImages] = useState([]); // {file, url, name}
+  const [chatImages, setChatImages] = useState([]);
   const [chatFigmas, setChatFigmas] = useState([]);
   const [showChatAttach, setShowChatAttach] = useState(false);
-
   const chatEndRef = useRef(null);
 
-  // pending (store what a logged-out user tried to send)
   const [pendingPrompt, setPendingPrompt] = useState("");
   const [pendingImages, setPendingImages] = useState([]);
 
-  // action modals
-  const [modal, setModal] = useState({
-    type: null,
-    msgId: null,
-    code: "",
-    lang: "",
-    url: "",
-    note: "",
-  });
+  // NEW modal controller (single source of truth)
+  // { type: 'code'|'view'|'live'|null, msgId, code, lang, url, note }
+  const [modal, setModal] = useState({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
 
-  // ===== preview + publish state =====
+  // preview/publish
   const [previews, setPreviews] = useState({});
   const [published, setPublished] = useState({});
-  const [previewStatus, setPreviewStatus] = useState("idle"); // idle | building | ready | error
 
-  // ---- Go Live modal local state (NEW, design unchanged) ----
+  // go live modal state
   const [liveSlug, setLiveSlug] = useState("");
-  const [copiedSlug, setCopiedSlug] = useState(false);
-  const [livePublishing, setLivePublishing] = useState(false);
-  const [liveResultUrl, setLiveResultUrl] = useState("");
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [liveAvail, setLiveAvail] = useState(null); // null | 'free' | 'taken'
 
-  // refs (home)
   const formRef = useRef(null);
   const textareaRef = useRef(null);
   const attachRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // refs (chat)
   const chatFormRef = useRef(null);
   const chatTextareaRef = useRef(null);
   const chatAttachRef = useRef(null);
   const chatFileInputRef = useRef(null);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
-
-  // normalize backend-relative links
-  const makeAbsoluteUrl = (u) => {
-    try {
-      return new URL(u, API_URL).toString();
-    } catch {
-      return u;
-    }
-  };
+  const makeAbsoluteUrl = (u) => { try { return new URL(u, API_URL).toString(); } catch { return u; } };
 
   const LINE_HEIGHT_PX = 20;
   const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
 
-  // ---- Typewriter placeholder (home) ----
+  // typewriter
   const TW_PREFIX = "surfers builds ";
   const TW_LIST = ["games for you", "websites for you", "apps for you", "anything for you"];
   const [twIdx, setTwIdx] = useState(0);
@@ -579,133 +658,69 @@ function SurfersApp() {
   const [blink, setBlink] = useState(true);
   const typewriter = TW_PREFIX + TW_LIST[twIdx].slice(0, twSub) + (blink ? " |" : "  ");
 
-  // caret blink
   useEffect(() => {
     const t = setInterval(() => setBlink((b) => !b), 500);
     return () => clearInterval(t);
   }, []);
-
-  // typing/deleting loop (paused when user is typing)
   useEffect(() => {
     if (prompt) return;
     const full = TW_LIST[twIdx];
-    const typingDelay = 150;
-    const deletingDelay = 25;
-    const holdAtEnd = 450;
-    const holdAtStart = 120;
-
+    const typingDelay = 150, deletingDelay = 25, holdAtEnd = 450, holdAtStart = 120;
     let timer;
     if (!twDeleting) {
-      if (twSub < full.length) {
-        timer = setTimeout(() => setTwSub(twSub + 1), typingDelay);
-      } else {
-        timer = setTimeout(() => setTwDeleting(true), holdAtEnd);
-      }
+      if (twSub < full.length) timer = setTimeout(() => setTwSub(twSub + 1), typingDelay);
+      else timer = setTimeout(() => setTwDeleting(true), holdAtEnd);
     } else {
-      if (twSub > 0) {
-        timer = setTimeout(() => setTwSub(twSub - 1), deletingDelay);
-      } else {
-        timer = setTimeout(() => {
-          setTwDeleting(false);
-          setTwIdx((twIdx + 1) % TW_LIST.length);
-        }, holdAtStart);
-      }
+      if (twSub > 0) timer = setTimeout(() => setTwSub(twSub - 1), deletingDelay);
+      else timer = setTimeout(() => { setTwDeleting(false); setTwIdx((twIdx + 1) % TW_LIST.length); }, holdAtStart);
     }
     return () => clearTimeout(timer);
   }, [prompt, twIdx, twSub, twDeleting]);
 
-  // observe bottom visibility (future "jump to latest")
   useEffect(() => {
     if (!chatEndRef.current) return;
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        const nearBottom = entry.isIntersecting;
-        atBottomRef.current = nearBottom;
-        setShowJump(!nearBottom);
-      },
+      ([entry]) => { atBottomRef.current = entry.isIntersecting; },
       { root: null, threshold: 0.01, rootMargin: "0px 0px -96px 0px" }
     );
     observer.observe(chatEndRef.current);
     return () => observer.disconnect();
   }, []);
 
-  // auth changes → clear cross-account state
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (currentUser) => {
       const newUid = currentUser?.uid || null;
-      const prevUid = prevUidRef.current;
-      if (newUid !== prevUid) {
-        clearConversationState();
-      }
+      if (newUid !== prevUidRef.current) clearConversationState();
       setUser(currentUser);
       prevUidRef.current = newUid;
     });
     return () => unsub();
   }, []);
 
-  // after login, auto-send pending
   useEffect(() => {
     if (user && pendingPrompt) {
       const toSend = pendingPrompt;
       const imgs = pendingImages;
-      setPendingPrompt("");
-      setPendingImages([]);
-      setAuthOpen(false);
-      setView("chat");
-      setTimeout(() => {
-        sendMessageStream(toSend, imgs);
-        setPrompt("");
-        setImages([]);
-        setFigmas([]);
-      }, 0);
+      setPendingPrompt(""); setPendingImages([]); setAuthOpen(false); setView("chat");
+      setTimeout(() => { sendMessageStream(toSend, imgs); setPrompt(""); setImages([]); setFigmas([]); }, 0);
     }
   }, [user, pendingPrompt, pendingImages]);
 
-  // cleanup on unmount
   useEffect(() => () => stopStreaming(), []);
-
-  // stop streaming when leaving chat
-  useEffect(() => {
-    if (view === "home") stopStreaming();
-  }, [view]);
-
-  // receive messages from preview iframe (ready/error)
-  useEffect(() => {
-    const onMsg = (e) => {
-      const d = e?.data;
-      if (!d || typeof d !== "object") return;
-      if (d.type === "surfers:ready") setPreviewStatus("ready");
-      if (d.type === "surfers:error") setPreviewStatus("error");
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, []);
+  useEffect(() => { if (view === "home") stopStreaming(); }, [view]);
 
   const resetPhoneAuth = () => {
     setPhone(""); setOtp(""); setOtpSent(false); setConfirmation(null);
-    try {
-      if (typeof window !== "undefined" && window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear?.();
-        window.recaptchaVerifier = null;
-      }
-    } catch {}
+    try { if (typeof window !== "undefined" && window.recaptchaVerifier) { window.recaptchaVerifier.clear?.(); window.recaptchaVerifier = null; } } catch {}
   };
-
   const handleGoogleLogin = async () => {
     try { await signInWithPopup(auth, googleProvider); resetPhoneAuth(); setAuthOpen(false); }
     catch (err) { console.error(err); }
   };
   const handleLogout = async () => {
-    try { await signOut(auth); }
-    catch (err) { console.error(err); }
-    finally {
-      resetPhoneAuth();
-      setAuthOpen(false);
-      clearConversationState();
-      setView("home");
-    }
+    try { await signOut(auth); } catch (err) { console.error(err); }
+    finally { resetPhoneAuth(); setAuthOpen(false); clearConversationState(); setView("home"); }
   };
-
   const sendOtp = async () => {
     try {
       if (typeof window !== "undefined" && !window.recaptchaVerifier) {
@@ -723,8 +738,7 @@ function SurfersApp() {
   };
 
   const resizeTextarea = () => {
-    const el = textareaRef.current;
-    if (!el) return;
+    const el = textareaRef.current; if (!el) return;
     el.style.height = "auto";
     const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
     el.style.height = next + "px";
@@ -741,7 +755,6 @@ function SurfersApp() {
   };
   useEffect(() => { resizeChatTextarea(); }, [chatInput]);
 
-  // type anywhere to focus active input
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName || "")) return;
@@ -753,10 +766,8 @@ function SurfersApp() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view]);
 
-  // auto focus chat box when entering chat view
   useEffect(() => { if (view === "chat") chatTextareaRef.current?.focus(); }, [view]);
 
-  // popover toggles
   useEffect(() => {
     if (!showAttach) return;
     const onClick = (e) => { if (attachRef.current && !attachRef.current.contains(e.target)) setShowAttach(false); };
@@ -774,14 +785,11 @@ function SurfersApp() {
     return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
   }, [showChatAttach]);
 
-  // file pickers
   const onAddImageClick = () => { fileInputRef.current?.click(); setShowAttach(false); };
   const onFilesPicked = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+    const files = Array.from(e.target.files || []); if (!files.length) return;
     const previews = files.map((f) => ({ file: f, url: URL.createObjectURL(f), name: f.name }));
-    setImages((prev) => [...prev, ...previews]);
-    e.target.value = "";
+    setImages((prev) => [...prev, ...previews]); e.target.value = "";
   };
   const onAddFigmaClick = () => {
     const url = window.prompt("Paste Figma link:"); if (!url) return;
@@ -794,11 +802,9 @@ function SurfersApp() {
 
   const onAddImageClickChat = () => { chatFileInputRef.current?.click(); setShowChatAttach(false); };
   const onFilesPickedChat = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+    const files = Array.from(e.target.files || []); if (!files.length) return;
     const previews = files.map((f) => ({ file: f, url: URL.createObjectURL(f), name: f.name }));
-    setChatImages((prev) => [...prev, ...previews]);
-    e.target.value = "";
+    setChatImages((prev) => [...prev, ...previews]); e.target.value = "";
   };
   const onAddFigmaClickChat = () => {
     const url = window.prompt("Paste Figma link:"); if (!url) return;
@@ -809,7 +815,6 @@ function SurfersApp() {
   const removeChatImage = (i) => setChatImages((prev) => prev.filter((_, idx) => idx !== i));
   const removeChatFigma = (i) => setChatFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
-  // helpers
   const addAssistantPlaceholder = () => {
     const id = Date.now() + Math.random();
     setMessages((prev) => [...prev, { id, role: "assistant", content: "", streaming: true }]);
@@ -819,76 +824,32 @@ function SurfersApp() {
   const appendToAssistant = (id, chunk) => {
     setMessages(prev => prev.map(m =>
       m.id === id
-        ? {
-            ...m,
-            content: (m.content || "") + (chunk || ""),
-            className: "transition-all duration-200"
-          }
+        ? { ...m, content: (m.content || "") + (chunk || ""), className: "transition-all duration-200" }
         : m
     ));
-  };
-  const scrollMessageToTop = (msgId) => {
-    requestAnimationFrame(() => {
-      const el = document.getElementById(`msg-${msgId}`);
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   };
 
   const stopStreaming = (reason = "manual-stop") => {
     try { streamAbortRef.current?.abort?.(reason); } catch {}
-    streamAbortRef.current = null;
-    setIsStreaming(false);
-    setPhase(null);
+    streamAbortRef.current = null; setIsStreaming(false); setPhase(null);
   };
 
-  // wipe all UI/chat state
   const clearConversationState = () => {
     stopStreaming();
-    setMessages([]);
-    setChatInput("");
-    setPrompt("");
-    setImages([]);
-    setChatImages([]);
-    setFigmas([]);
-    setChatFigmas([]);
-    setCode("");
-    setIsStreaming(false);
-    setPhase(null);
-    setPreviews({});
-    setPublished({});
+    setMessages([]); setChatInput(""); setPrompt("");
+    setImages([]); setChatImages([]); setFigmas([]); setChatFigmas([]);
+    setCode(""); setIsStreaming(false); setPhase(null);
+    setPreviews({}); setPublished({});
+    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
   };
 
-  // non-stream fallback (HOME only)
-  async function sendMessage(text) {
-    const id = Date.now();
-    setMessages((prev) => [...prev, { id, role: "user", content: text }]);
-    try {
-      const formData = new FormData();
-      formData.append("prompt", text);
-      formData.append("history", JSON.stringify(messages.slice(-8)));
-      images.forEach((img) => formData.append("images", img.file, img.name));
-
-      const res = await fetch(`${API_URL}/api/generate`, { method: "POST", body: formData });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const reply = data.reply || data.code || "";
-      setMessages((prev) => [...prev, { id: id + 1, role: "assistant", content: reply || "…" }]);
-    } catch (err) {
-      setMessages((prev) => [...prev, { id: id + 1, role: "assistant", content: `// Error: ${String(err)}` }]);
-    }
-  }
-
-  // STREAMING (raw/SSE/NDJSON)
+  // STREAMING — raw body from /api/stream-es
   async function sendMessageStream(text, attachments = []) {
     const userId = Date.now();
     setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
     const asstId = addAssistantPlaceholder();
-    setPhase("connecting");
     streamBufRef.current.buf = "";
     if (streamBufRef.current.t) { clearTimeout(streamBufRef.current.t); streamBufRef.current.t = null; }
-
-    scrollMessageToTop(userId);
 
     const hist = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
     const formData = new FormData();
@@ -899,8 +860,7 @@ function SurfersApp() {
     const ac = new AbortController();
     streamAbortRef.current = ac;
 
-    let idleTimer = null;
-    let hardCapTimer = null;
+    let idleTimer = null, hardCapTimer = null;
     const armTimers = () => {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => ac.abort("idle-timeout"), STREAM_INACTIVITY_MS);
@@ -908,17 +868,12 @@ function SurfersApp() {
         hardCapTimer = setTimeout(() => ac.abort("max-duration"), STREAM_MAX_DURATION_MS);
       }
     };
-    const clearTimers = () => {
-      if (idleTimer) clearTimeout(idleTimer);
-      if (hardCapTimer) clearTimeout(hardCapTimer);
-      idleTimer = null; hardCapTimer = null;
-    };
+    const clearTimers = () => { if (idleTimer) clearTimeout(idleTimer); if (hardCapTimer) clearTimeout(hardCapTimer); idleTimer = null; hardCapTimer = null; };
 
     let gotAny = false;
 
     try {
-      setIsStreaming(true);
-      armTimers();
+      setIsStreaming(true); armTimers();
 
       const res = await fetch(`${API_URL}/api/stream-es`, { method: "POST", body: formData, signal: ac.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -926,123 +881,84 @@ function SurfersApp() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-
-      // generic ingestor (supports raw/SSE/NDJSON) — simplified here (raw)
+      const ingestor = makeStreamIngestor(
+        (t) => {
+          streamBufRef.current.buf += t;
+          scheduleFlush(asstId);
+          if (/\S/.test(t)) gotAny = true;
+          if (/```|\b(import|class|def|function|const|let|var)\b/.test(t)) setPhase("coding");
+        },
+        () => {}
+      );
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const chunkStr = decoder.decode(value, { stream: true });
-        if (chunkStr) {
-          streamBufRef.current.buf += chunkStr;
-          scheduleFlush(asstId);
-          if (/\S/.test(chunkStr)) gotAny = true;
-          if (/```|\b(import|class|def|function|const|let|var)\b/.test(chunkStr)) setPhase("coding");
-          else if (!gotAny) setPhase("generating");
-        }
+        if (chunkStr) ingestor.feed(chunkStr);
         armTimers();
       }
-
-      flushNow(asstId);
+      ingestor.end(); flushNow(asstId);
     } catch (err) {
       const msg = String(err?.name || err || "");
       const reason = (err && "message" in err) ? String(err.message) : msg;
-      if (!/AbortError/i.test(msg) && !/AbortError/i.test(reason) && !/manual-stop|user-typed|new-message|stream-timeout|idle-timeout|max-duration/.test(reason)) {
+      if (!/AbortError/i.test(msg) && !/AbortError/i.test(reason) && !/manual-stop|new-message|idle-timeout|max-duration/.test(reason)) {
         appendToAssistant(asstId, `\n// stream error: ${String(err)}`);
       }
     } finally {
       clearTimers();
       if (streamAbortRef.current === ac) streamAbortRef.current = null;
       if (!gotAny) appendToAssistant(asstId, "\n// (no content received — check server logs or network)");
-      setPhase(null);
-      setIsStreaming(false);
+      setPhase(null); setIsStreaming(false);
     }
   }
 
-  // HOME SUBMIT — clear input BEFORE sending
+  // submit handlers
   async function onSubmit(e) {
     e.preventDefault();
     if (isStreaming) stopStreaming("new-message");
-
     if (!prompt.trim() && images.length === 0) return;
+
     const first = prompt.trim();
     const imgs = images;
 
     if (!user) {
-      setPendingPrompt(first);
-      setPendingImages(imgs);
-      setPrompt("");
-      setImages([]);
-      setFigmas([]);
-      setAuthOpen(true);
+      setPendingPrompt(first); setPendingImages(imgs);
+      setPrompt(""); setImages([]); setFigmas([]); setAuthOpen(true);
       return;
     }
 
-    setPrompt("");
-    setImages([]);
-    setFigmas([]);
-    setView("chat");
+    setPrompt(""); setImages([]); setFigmas([]); setView("chat");
     setTimeout(() => sendMessageStream(first, imgs), 0);
   }
 
-  // CHAT SEND — clear input BEFORE sending
   const sendFromChat = (e) => {
     e.preventDefault();
     if (isStreaming) stopStreaming("new-message");
-
     if (!chatInput.trim() && chatImages.length === 0) return;
+
     const txt = chatInput.trim();
     const imgs = chatImages;
 
     if (!user) {
-      setPendingPrompt(txt);
-      setPendingImages(imgs);
-      setChatInput("");
-      setChatImages([]);
-      setChatFigmas([]);
-      setAuthOpen(true);
+      setPendingPrompt(txt); setPendingImages(imgs);
+      setChatInput(""); setChatImages([]); setChatFigmas([]); setAuthOpen(true);
       return;
     }
 
-    setChatInput("");
-    setChatImages([]);
-    setChatFigmas([]);
+    setChatInput(""); setChatImages([]); setChatFigmas([]);
     setTimeout(() => sendMessageStream(txt, imgs), 0);
   };
 
-  // ===== helpers for “code / view / go live” =====
   const getMsgById = (id) => messages.find((m) => m.id === id);
 
-  // first fenced code block extractor
-  const extractFirstCodeBlock = (text) => {
-    const m = (text || "").match(/```(\w+)?\n([\s\S]*?)```/);
-    if (!m) return { lang: "", code: "" };
-    return { lang: (m[1] || "").toLowerCase(), code: m[2] || "" };
-  };
-
-  // hide fenced code blocks and full html docs from the chat bubble,
-  // plus hide lone "index.html" mention lines (per your rule)
-  const stripFenced = (t) => (t || "").replace(/```[\s\S]*?```/g, "");
-  const stripHtmlDoc = (t) =>
-    (t || "")
-      .replace(/<!DOCTYPE[\s\S]*?<\/html>/gi, "")
-      .replace(/<html[\s\S]*?<\/html>/gi, "");
-  const stripIndexHtmlMention = (t) =>
-    (t || "").replace(/^\s*index\.html\s*:?\s*$/gim, "");
-  const stripGeneratedCodeFromChat = (t) =>
-    stripIndexHtmlMention(stripHtmlDoc(stripFenced(t)));
-
-  // ===== preview build =====
+  // preview builder
   async function buildOrUpdatePreview(msgId) {
     const msg = getMsgById(msgId);
-    const fullText = msg?.content || "";
-    const parsed = parseGeneratedCode(fullText);
+    const parsed = parseGeneratedCode(msg?.content || "");
     if (!parsed.code || !parsed.code.trim()) {
-      setPreviewStatus("error");
       setModal((m) => ({ ...m, note: "No usable code found in this message." }));
-      return;
+      return null;
     }
-    setPreviewStatus("building");
-
     const existing = previews[msgId];
     const payload = { code: parsed.code, lang: parsed.lang || "html", artifactId: existing?.artifactId || null };
 
@@ -1054,86 +970,62 @@ function SurfersApp() {
       });
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        setPreviewStatus("error");
         setModal((m) => ({ ...m, note: `build failed: ${txt || res.status}` }));
-        return;
+        return null;
       }
       const data = await res.json();
       const absUrl = makeAbsoluteUrl(data.previewUrl);
       const next = { artifactId: data.artifactId, url: absUrl };
       setPreviews((p) => ({ ...p, [msgId]: next }));
-
-      const src = `${next.url}${next.url.includes("?") ? "&" : "?"}t=${Date.now()}`;
-      setModal((m) => ({ ...m, url: src, note: "" }));
+      return next;
     } catch (err) {
-      setPreviewStatus("error");
       setModal((m) => ({ ...m, note: `build failed: ${String(err)}` }));
+      return null;
     }
   }
 
+  // open modals
   const openCodeModal = (id) => {
     const msg = getMsgById(id);
-    const fullText = msg?.content || "";
-    const parsed = parseGeneratedCode(fullText);
-    setModal({
-      type: "code",
-      msgId: id,
-      code: parsed.code || "",
-      lang: parsed.lang || "html",
-      url: "",
-      note: parsed.code ? "" : "No usable code found in this message.",
-    });
+    const parsed = parseGeneratedCode(msg?.content || "");
+    setModal({ type: "code", msgId: id, code: parsed.code || "", lang: parsed.lang || "html", url: "", note: "" });
   };
 
   const openViewModal = async (id) => {
-    const msg = getMsgById(id);
-    const fullText = msg?.content || "";
-    const parsed = parseGeneratedCode(fullText);
-    setModal({ type: "view", msgId: id, code: parsed.code || "", lang: parsed.lang || "html", url: "", note: "" });
-    await buildOrUpdatePreview(id);
-  };
-
-  // === Go live ===
-  const copySlugToClipboard = async () => {
-    const full = `${sanitizeSlugClient(liveSlug)}.surfers.co.in`;
-    try {
-      await navigator.clipboard?.writeText(full);
-      setCopiedSlug(true);
-      setTimeout(() => setCopiedSlug(false), 1200);
-    } catch {}
+    setModal({ type: "view", msgId: id, code: "", lang: "", url: "", note: "" });
+    const built = await buildOrUpdatePreview(id);
+    if (built?.url) setModal((m) => ({ ...m, url: `${built.url}${built.url.includes("?") ? "&" : "?"}t=${Date.now()}` }));
   };
 
   const openLiveModal = async (id) => {
-    const prev = previews[id];
+    // ensure preview exists
+    let prev = previews[id];
     if (!prev?.artifactId) {
-      alert("Preview not built yet. Building now…");
-      await openViewModal(id);
-      return;
+      const built = await buildOrUpdatePreview(id);
+      if (!built) { alert("Failed to build preview before publishing."); return; }
+      prev = built;
     }
-    const defaultSlugBase = (user?.uid || "anon").slice(0, 6);
-    const defaultSlug = `proj-${defaultSlugBase}-${String(id).slice(-4)}`;
-    setLiveSlug(defaultSlug);
-    setLivePublishing(false);
-    setLiveResultUrl("");
-    setCopiedSlug(false);
+    const defaultSlug = `proj-${(user?.uid || "anon").slice(0, 6)}-${String(id).slice(-4)}`.toLowerCase();
+    setLiveSlug(defaultSlug); setLiveBusy(false); setLiveAvail(null);
     setModal({ type: "live", msgId: id, code: "", lang: "", url: "", note: "" });
   };
 
-  const publishLive = async () => {
-    if (!modal.msgId) return;
-    const prev = previews[modal.msgId];
-    if (!prev?.artifactId) {
-      setModal((m) => ({ ...m, note: "Preview not available. Build a preview first." }));
-      return;
-    }
-    const slug = sanitizeSlugClient(liveSlug);
-    if (!slug) {
-      setModal((m) => ({ ...m, note: "Invalid project name." }));
-      return;
-    }
+  const closeModal = () => setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+
+  // chat bubble text: strip all code (fenced + full HTML docs)
+  const stripFenced = (t) => (t || "").replace(/```[\s\S]*?```/g, "");
+  const stripHtmlDoc = (t) => (t || "").replace(/<!DOCTYPE[\s\S]*?<\/html>/gi, "").replace(/<html[\s\S]*?<\/html>/gi, "");
+  const stripGeneratedCodeFromChat = (t) => stripHtmlDoc(stripFenced(t));
+
+  // publish helpers
+  const publishCurrent = async () => {
+    const msgId = modal.msgId;
+    const prev = previews[msgId];
+    if (!prev?.artifactId) { setModal((m) => ({ ...m, note: "No preview artifact. Try View first." })); return; }
+    const slug = liveSlug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    if (!slug) { setModal((m) => ({ ...m, note: "Invalid slug." })); return; }
     try {
-      setLivePublishing(true);
-      setModal((m) => ({ ...m, note: "" }));
+      setLiveBusy(true);
       const res = await fetch(`${API_URL}/api/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1142,27 +1034,36 @@ function SurfersApp() {
       if (!res.ok) {
         const t = await res.text().catch(() => "");
         setModal((m) => ({ ...m, note: `Publish failed: ${t || res.status}` }));
-        setLivePublishing(false);
+        setLiveBusy(false);
         return;
       }
-      const data = await res.json(); // { liveUrl, project, artifactId }
+      const data = await res.json();
       const liveAbs = makeAbsoluteUrl(data.liveUrl);
       setPublished((p) => ({ ...p, [data.project]: data.artifactId }));
-      setLiveResultUrl(liveAbs); // show the link below the button
-      setModal((m) => ({ ...m, note: "Live! Share this URL. Re-run publish with the same slug to update." }));
+      setModal((m) => ({ ...m, note: `Live! ${liveAbs}` }));
+      setLiveBusy(false);
     } catch (err) {
       setModal((m) => ({ ...m, note: `Publish failed: ${String(err)}` }));
-    } finally {
-      setLivePublishing(false);
+      setLiveBusy(false);
     }
   };
 
-  const closeModal = () => {
-    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
-    setPreviewStatus("idle");
-    setLivePublishing(false);
-    setLiveResultUrl("");
-    setCopiedSlug(false);
+  const checkAvailability = async () => {
+    const slug = liveSlug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    if (!slug) { setLiveAvail(null); return; }
+    try {
+      // If GET /live/:slug/ returns 200, it's taken; 404 means free
+      const res = await fetch(`${API_URL}/live/${slug}/`, { method: "HEAD" });
+      setLiveAvail(res.ok ? "taken" : "free");
+    } catch {
+      // if fetch fails (CORS/HEAD not allowed), fall back to GET
+      try {
+        const res2 = await fetch(`${API_URL}/live/${slug}/`, { method: "GET" });
+        setLiveAvail(res2.ok ? "taken" : "free");
+      } catch {
+        setLiveAvail(null);
+      }
+    }
   };
 
   return (
@@ -1177,7 +1078,7 @@ function SurfersApp() {
                 <a href="#" className="hover:text-[#A8ADB5]">community</a>
                 <a href="#" className="hover:text-[#A8ADB5]">developers</a>
               </nav>
-              <div className="ml-auto cursor-pointer" onClick={() => { resetPhoneAuth(); setAuthOpen(true); }}>
+              <div className="ml-auto cursor-pointer" onClick={() => { setAuthOpen(true); }}>
                 <ProfileIcon className="h-[20px] w-[20px]" />
               </div>
             </div>
@@ -1252,16 +1153,16 @@ function SurfersApp() {
                 </div>
               </div>
 
+              {code ? (
+                <div className="w-full max-w-[560px] mt-4">
+                  <pre className="whitespace-pre-wrap text-[12px] leading-5 text-[#C9D1D9] bg-[#111214] border border-[#2A2A2A] rounded-[12px] p-4 overflow-x-auto">
+                    {code}
+                  </pre>
+                </div>
+              ) : null}
+
               <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={onFilesPicked} />
             </form>
-
-            {code ? (
-              <div className="w-full max-w-[560px] mt-4">
-                <pre className="whitespace-pre-wrap text-[12px] leading-5 text-[#C9D1D9] bg-[#111214] border border-[#2A2A2A] rounded-[12px] p-4 overflow-x-auto">
-                  {code}
-                </pre>
-              </div>
-            ) : null}
           </Container>
         </main>
       )}
@@ -1272,11 +1173,11 @@ function SurfersApp() {
           <header className="pt-4">
             <Container>
               <div className="relative h-[28px] flex items-center">
-                <button onClick={() => { stopStreaming(); setPhase(null); setView("home"); }} className="mr-2">
+                <button onClick={() => { stopStreaming(); setView("home"); }} className="mr-2">
                   <BackArrow className="h-[18px] w-[18px]" />
                 </button>
                 <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"><LogoSmall className="h-[18px] w-[18px]" /></div>
-                <div className="ml-auto cursor-pointer" onClick={() => { resetPhoneAuth(); setAuthOpen(true); }}>
+                <div className="ml-auto cursor-pointer" onClick={() => setAuthOpen(true)}>
                   <ProfileIcon className="h-[18px] w-[18px]" />
                 </div>
               </div>
@@ -1288,7 +1189,6 @@ function SurfersApp() {
               {messages.map((m) => {
                 const isAssistant = m.role === "assistant";
                 const hasContent = (m.content ?? "").trim() !== "";
-
                 const cleaned = isAssistant ? stripGeneratedCodeFromChat(m.content || "") : (m.content || "");
                 const textToShow = (cleaned || "").trim() || (isAssistant ? "_generated code ready — use the buttons below._" : "");
 
@@ -1330,14 +1230,9 @@ function SurfersApp() {
                             )}
                           </>
                         ) : isStreaming ? (
-                          <div
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]"
-                            aria-live="polite"
-                          >
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]" aria-live="polite">
                             <Spinner />
-                            <span>
-                              {phase === "thinking" ? "thinking…" : phase === "coding" ? "writing code…" : "writing…"}
-                            </span>
+                            <span>{phase === "coding" ? "writing code…" : "writing…"}</span>
                           </div>
                         ) : null
                       ) : (
@@ -1347,11 +1242,11 @@ function SurfersApp() {
                   </div>
                 );
               })}
-
               <div ref={chatEndRef} />
             </Container>
           </main>
 
+          {/* input row */}
           <div className="fixed left-0 right-0 bottom-0 bg-gradient-to-t from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6">
             <Container>
               <form ref={chatFormRef} onSubmit={sendFromChat} className="w-full max-w-[560px] mx-auto">
@@ -1411,135 +1306,10 @@ function SurfersApp() {
               </form>
             </Container>
           </div>
-
-          {/* ===== ACTION MODALS ===== */}
-          <Modal open={modal.type === "code"} onClose={closeModal} title="Code">
-            <div className="w-full h-full overflow-auto p-3">
-              {modal.code
-                ? <Markdown>{` \`\`\`${modal.lang || ""}\n${modal.code}\n\`\`\` `}</Markdown>
-                : <div className="p-4 text-[#c7cbd2]">{modal.note}</div>
-              }
-            </div>
-          </Modal>
-
-          <Modal
-            open={modal.type === "view"}
-            onClose={closeModal}
-            title="Preview"
-            rightEl={
-              <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${previewStatus === "ready" ? "border-green-700 text-green-400" : previewStatus === "building" ? "border-yellow-700 text-yellow-400" : previewStatus === "error" ? "border-red-700 text-red-400" : "border-[#2A2A2A] text-[#C8CCD2]"}`}>
-                  {previewStatus === "ready" ? "● ready" : previewStatus === "building" ? "● building" : previewStatus === "error" ? "● error" : "● idle"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => buildOrUpdatePreview(modal.msgId)}
-                  className="px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-sm"
-                  title="Rebuild"
-                >
-                  update preview
-                </button>
-              </div>
-            }
-          >
-            {modal.url
-              ? (
-                <iframe
-                  key={modal.url}
-                  src={modal.url}
-                  className="w-full h-full"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
-                  allow="accelerometer; camera; microphone; clipboard-read; clipboard-write; geolocation; gyroscope; payment; fullscreen"
-                  referrerPolicy="no-referrer"
-                  onLoad={() => setPreviewStatus("ready")}
-                  onError={() => setPreviewStatus("error")}
-                />
-              )
-              : <div className="p-4 text-[#c7cbd2]">{modal.note || "building preview…"}</div>
-            }
-          </Modal>
-
-          {/* ===== GO LIVE MODAL (same design, now with copy + link after publish) ===== */}
-          <Modal open={modal.type === "live"} onClose={closeModal} title="">
-            <div className="w-full h-full overflow-auto flex items-center justify-center p-6">
-              <div className="w-[min(680px,92%)] text-[#EDEDED]">
-                {/* header (keep your style) */}
-                <div className="text-center mb-6">
-                  <div className="text-[44px] font-extrabold leading-none">
-                    <span className="text-[#EDEDED]">go live.</span>{" "}
-                    <span className="text-[#ff4747]">yeah.</span>
-                  </div>
-                </div>
-
-                {/* slug input + copy (kept style) */}
-                <div className="flex items-stretch gap-2">
-                  <div className="flex-1 flex items-center rounded-xl bg-white text-[#1b1b1b] overflow-hidden">
-                    <input
-                      value={liveSlug}
-                      onChange={(e) => setLiveSlug(sanitizeSlugClient(e.target.value))}
-                      className="flex-1 px-4 py-3 outline-none text-[16px]"
-                      placeholder="project-name"
-                    />
-                    <div className="px-3 text-[16px] font-medium text-[#555] border-l border-neutral-200">
-                      .surfers.co.in
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={copySlugToClipboard}
-                    className={`px-3 rounded-xl border ${copiedSlug ? "border-[#1a73e8] bg-[#1a73e8] text-white" : "border-[#2A2A2A] bg-[#1B1B1C] text-[#EDEDED]"} flex items-center justify-center`}
-                    title="Copy full domain"
-                  >
-                    <CopyIcon active={copiedSlug} />
-                  </button>
-                </div>
-
-                <div className="text-center mt-2">
-                  <a className="text-[#4b9fff] underline cursor-pointer text-sm">
-                    check the availability of domain
-                  </a>
-                </div>
-
-                {/* publish button */}
-                <div className="mt-5">
-                  <button
-                    disabled={livePublishing}
-                    onClick={publishLive}
-                    className={`w-full py-4 rounded-2xl text-white text-lg font-semibold ${livePublishing ? "bg-[#b83a3a] cursor-not-allowed" : "bg-[#EA3838] hover:bg-[#ff3d3d]"} transition-colors`}
-                  >
-                    {livePublishing ? "going live…" : "go live. fast. dude."}
-                  </button>
-                </div>
-
-                {/* live link shown only after publish */}
-                {liveResultUrl && (
-                  <div className="mt-4 flex items-center justify-between rounded-xl border border-[#2A2A2A] bg-[#0f0f10] p-3">
-                    <div className="text-sm text-[#C8CCD2]">live link:</div>
-                    <a
-                      href={liveResultUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 underline decoration-[#4b9fff]"
-                    >
-                      <ExtLinkIcon />
-                      <span className="break-all">{liveResultUrl}</span>
-                    </a>
-                  </div>
-                )}
-
-                {/* footnote + any message */}
-                <div className="mt-4 text-center text-[#9AA0A6]">
-                  making your website live will enable anyone to use it anywhere.
-                </div>
-                {modal.note && (
-                  <div className="mt-3 text-center text-red-400 text-sm">{modal.note}</div>
-                )}
-              </div>
-            </div>
-          </Modal>
         </>
       )}
 
+      {/* ===== FOOTER ===== */}
       {view === "home" && (
         <footer className="pb-[22px]">
           <Container>
@@ -1551,8 +1321,9 @@ function SurfersApp() {
         </footer>
       )}
 
+      {/* ===== AUTH LIGHTBOX ===== */}
       {authOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-90 z-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-[90]">
           <div className="w-[400px] text-center p-8 rounded-xl bg-black border border-gray-800">
             <h1 className="text-3xl font-bold">account.</h1>
             <p className="text-gray-400 mb-6">create or log in.</p>
@@ -1576,7 +1347,7 @@ function SurfersApp() {
 
                 {!otpSent ? (
                   <>
-                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" className="w-full px-3 py-2 rounded-lg border border-gray-600 bg白 text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     <button onClick={sendOtp} className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg">send OTP</button>
                   </>
                 ) : (
@@ -1596,17 +1367,41 @@ function SurfersApp() {
               © 2025 surfers
             </p>
 
-            <button onClick={() => { resetPhoneAuth(); setAuthOpen(false); }} className="mt-4 text-sm text-gray-400 underline">close</button>
+            <button onClick={() => { setAuthOpen(false); }} className="mt-4 text-sm text-gray-400 underline">close</button>
           </div>
         </div>
       )}
+
+      {/* ===== NEW MODALS (only one ever renders at once) ===== */}
+      <CodeModal
+        open={modal.type === "code"}
+        lang={modal.lang}
+        code={modal.code}
+        onClose={closeModal}
+      />
+      <ViewModal
+        open={modal.type === "view"}
+        url={modal.url}
+        onClose={closeModal}
+      />
+      <LiveModal
+        open={modal.type === "live"}
+        onClose={closeModal}
+        slug={liveSlug}
+        setSlug={setLiveSlug}
+        busy={liveBusy}
+        note={modal.note}
+        onPublish={publishCurrent}
+        onCheck={checkAvailability}
+        avail={liveAvail}
+      />
     </div>
   );
 }
 
-/**********************
- * Export default wrapped with ErrorBoundary
- **********************/
+/* =========================
+   Export
+   ========================= */
 export default function App() {
   return (
     <ErrorBoundary>

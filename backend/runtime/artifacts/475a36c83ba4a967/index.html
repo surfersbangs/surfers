@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raaat Condoms - Premium Protection</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; line-height: 1.6; background: #f8f9fa; color: #333; }
+        header { background: #e31837; color: white; padding: 1rem; text-align: center; }
+        nav { background: #c8102e; padding: 0.5rem; text-align: center; }
+        nav a { color: white; text-decoration: none; margin: 0 1rem; font-weight: bold; }
+        .hero { text-align: center; padding: 2rem; background: linear-gradient(135deg, #e31837, #ff6b6b); color: white; }
+        .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; padding: 2rem; }
+        .product { background: white; border-radius: 8px; padding: 1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
+        .product img { max-width: 100%; height: 150px; object-fit: contain; margin-bottom: 1rem; }
+        .btn { background: #e31837; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
+        footer { background: #333; color: white; text-align: center; padding: 1rem; margin-top: 2rem; }
+        @media (max-width: 600px) { .products { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RAAAT CONDOMS</h1>
+        <p>Premium Protection for Peace of Mind</p>
+    </header>
+    
+    <nav>
+        <a href="#products">Products</a>
+        <a href="#about">About</a>
+        <a href="#contact">Contact</a>
+    </nav>
+
+    <section class="hero">
+        <h2>Safety Meets Comfort</h2>
+        <p>Discover our range of premium condoms designed for maximum protection and sensitivity</p>
+    </section>
+
+    <section id="products" class="products">
+        <div class="product">
+            <div style="height:150px;background:#ffebee;display:grid;place-items:center;font-size:3rem;">🛡️</div>
+            <h3>Classic Ultra-Thin</h3>
+            <p>Maximum sensitivity with reliable protection</p>
+            <p><strong>$12.99</strong></p>
+            <button class="btn">Add to Cart</button>
+        </div>
+        <div class="product">
+            <div style="height:150px;background:#e8f5e8;display:grid;place-items:center;font-size:3rem;">❤️</div>
+            <h3>Extra Sensitive</h3>
+            <p>Enhanced pleasure with ultimate safety</p>
+            <p><strong>$14.99</strong></p>
+            <button class="btn">Add to Cart</button>
+        </div>
+        <div class="product">
+            <div style="height:150px;background:#fff3e0;display:grid;place-items:center;font-size:3rem;">⭐</div>
+            <h3>Premium Collection</h3>
+            <p>Luxury experience with premium materials</p>
+            <p><strong>$19.99</strong></p>
+            <button class="btn">Add to Cart</button>
+        </div>
+    </section>
+
+    <section id="about" style="padding: 2rem; text-align: center;">
+        <h2>About Raaat</h2>
+        <p>We're committed to providing high-quality, safe, and comfortable protection products. Our condoms are rigorously tested to ensure your peace of mind.</p>
+    </section>
+
+    <section id="contact" style="padding: 2rem; text-align: center; background: #eee;">
+        <h2>Contact Us</h2>
+        <p>Email: info@raaat.com</p>
+        <p>Phone: (555) 123-4567</p>
+    </section>
+
+    <footer>
+        <p>&copy; 2023 Raaat Condoms. All rights reserved.</p>
+    </footer>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

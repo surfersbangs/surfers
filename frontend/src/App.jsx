@@ -1,3 +1,4 @@
+// App.jsx
 import { useState, useRef, useEffect } from "react";
 import {
   onAuthStateChanged,
@@ -12,10 +13,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "highlight.js/styles/github-dark-dimmed.css";
 
-/**********************
- * ERROR BOUNDARY
- **********************/
 import React from "react";
+
+/* =========================
+   Error Boundary
+   ========================= */
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -26,24 +28,40 @@ class ErrorBoundary extends React.Component {
   }
   componentDidCatch(err, info) {
     // eslint-disable-next-line no-console
-    console.error("\n[ErrorBoundary] App crashed:", err, info);
+    console.error("[ErrorBoundary] App crashed:", err, info);
   }
   render() {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 24, color: "#eee", background: "#0B0B0C", minHeight: "100vh" }}>
-          <div style={{
-            maxWidth: 720,
-            margin: "40px auto",
-            background: "#121214",
-            border: "1px solid #2A2A2A",
-            borderRadius: 16,
-            padding: 16,
-          }}>
+          <div
+            style={{
+              maxWidth: 720,
+              margin: "40px auto",
+              background: "#121214",
+              border: "1px solid #2A2A2A",
+              borderRadius: 16,
+              padding: 16,
+            }}
+          >
             <h2 style={{ marginTop: 0 }}>something broke. 😵‍💫</h2>
-            <p style={{ opacity: 0.8 }}>the app hit a runtime error but stayed up thanks to the error boundary.</p>
-            <pre style={{ whiteSpace: "pre-wrap", background: "#0f0f10", padding: 12, borderRadius: 12, border: "1px solid #2A2A2A" }}>{this.state.msg}</pre>
-            <p style={{ opacity: 0.7, fontSize: 12 }}>check the console for stack trace (DevTools ▶ Console).</p>
+            <p style={{ opacity: 0.8 }}>
+              the app hit a runtime error but stayed up thanks to the error boundary.
+            </p>
+            <pre
+              style={{
+                whiteSpace: "pre-wrap",
+                background: "#0f0f10",
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid #2A2A2A",
+              }}
+            >
+              {this.state.msg}
+            </pre>
+            <p style={{ opacity: 0.7, fontSize: 12 }}>
+              check the console for stack trace (DevTools ▶ Console).
+            </p>
           </div>
         </div>
       );
@@ -52,9 +70,9 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-/**********************
- * Utility Container
- **********************/
+/* =========================
+   Small UI helpers
+   ========================= */
 const Container = ({ children, className = "" }) => (
   <div className={`mx-auto ${className}`} style={{ width: "min(1120px, 90vw)" }}>
     {children}
@@ -105,9 +123,31 @@ const Spinner = ({ className = "h-4 w-4" }) => (
     <g fill="none" stroke="#C8CCD2" strokeWidth="2">
       <circle cx="12" cy="12" r="9" opacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9">
-        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.5s" repeatCount="indefinite" />
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          from="0 12 12"
+          to="360 12 12"
+          dur="0.5s"
+          repeatCount="indefinite"
+        />
       </path>
     </g>
+  </svg>
+);
+
+/* icons for go-live modal */
+const CopyIcon = ({ active }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="9" y="9" width="11" height="11" rx="2" stroke={active ? "#1a73e8" : "#9AA0A6"} strokeWidth="1.6"/>
+    <rect x="4" y="4" width="11" height="11" rx="2" stroke={active ? "#1a73e8" : "#9AA0A6"} strokeWidth="1.6" opacity="0.7"/>
+  </svg>
+);
+const ExtLinkIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M14 5h5v5" stroke="#9AA0A6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10 14L19 5" stroke="#9AA0A6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M19 14v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" stroke="#9AA0A6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -115,6 +155,14 @@ const Spinner = ({ className = "h-4 w-4" }) => (
  * Modal
  **********************/
 const Modal = ({ open, onClose, title, rightEl, children }) => {
+  // lock body scroll while modal is open (no visible design change)
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80">
@@ -171,7 +219,9 @@ function CodeBlock({ inline, className, children, ...props }) {
       .catch(() => {
         if (codeRef.current) codeRef.current.textContent = raw;
       });
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [raw, lang]);
 
   if (inline) {
@@ -206,12 +256,22 @@ function Markdown({ children }) {
           />
         ),
         p: ({ node, ...props }) => <p {...props} className="mb-3" />,
-        ul: ({ node, ...props }) => <ul {...props} className="list-disc pl-5 mb-3 space-y-1" />,
-        ol: ({ node, ...props }) => <ol {...props} className="list-decimal pl-5 mb-3 space-y-1" />,
+        ul: ({ node, ...props }) => (
+          <ul {...props} className="list-disc pl-5 mb-3 space-y-1" />
+        ),
+        ol: ({ node, ...props }) => (
+          <ol {...props} className="list-decimal pl-5 mb-3 space-y-1" />
+        ),
         li: ({ node, ...props }) => <li {...props} className="leading-6" />,
-        h1: ({ node, ...props }) => <h1 {...props} className="text-xl font-semibold mb-2 mt-3" />,
-        h2: ({ node, ...props }) => <h2 {...props} className="text-lg font-semibold mb-2 mt-3" />,
-        h3: ({ node, ...props }) => <h3 {...props} className="text-base font-semibold mb-2 mt-3" />,
+        h1: ({ node, ...props }) => (
+          <h1 {...props} className="text-xl font-semibold mb-2 mt-3" />
+        ),
+        h2: ({ node, ...props }) => (
+          <h2 {...props} className="text-lg font-semibold mb-2 mt-3" />
+        ),
+        h3: ({ node, ...props }) => (
+          <h3 {...props} className="text-base font-semibold mb-2 mt-3" />
+        ),
         blockquote: ({ node, ...props }) => (
           <blockquote
             {...props}
@@ -231,33 +291,32 @@ function Markdown({ children }) {
  **********************/
 const STREAM_INACTIVITY_MS = 25000;
 const STREAM_MAX_DURATION_MS = 180000;
+const VERSION_TAG = "app-parse+stream v2.4";
 
 /**********************
- * CODE PARSERS (robust)
- * - Handles fenced ``` blocks
- * - Handles un-fenced "html/css/js" headings
- * - Grabs raw <!DOCTYPE> / <html> fragments
- * - Assembles full HTML when needed
+ * ROBUST CODE PARSERS
  **********************/
-const FENCE_RE = /```(\w+)?\n([\s\S]*?)```/;
+const FENCE_GLOBAL_RE = /```(\w+)?\n([\s\S]*?)```/g;
 const INLINE_LANG_LINE_RE = /^\s*(html?|css|js|javascript|typescript)\s*:?\s*$/i;
 
-function extractFenced(text) {
-  const m = text.match(FENCE_RE);
-  if (!m) return null;
-  const lang = (m[1] || "").toLowerCase();
-  const code = m[2] || "";
-  return { lang, code, reason: "fenced" };
+function collectFencedBlocks(text) {
+  const out = [];
+  let m;
+  while ((m = FENCE_GLOBAL_RE.exec(text)) !== null) {
+    const lang = (m[1] || "").toLowerCase();
+    out.push({ lang, code: m[2] || "" });
+  }
+  return out;
 }
 
 function findHtmlFragment(text) {
-  const idx = text.search(/<!DOCTYPE\s+html>|<html[\s>]/i);
-  if (idx === -1) return null;
-  // try to cut at </html> if present, otherwise take tail
-  const endIdxMatch = text.slice(idx).search(/<\/html>/i);
-  const endIdx = endIdxMatch === -1 ? text.length : idx + endIdxMatch + "</html>".length;
-  const frag = text.slice(idx, endIdx);
-  return frag.trim() ? { lang: "html", code: frag, reason: "html-fragment" } : null;
+  const start = text.search(/<!DOCTYPE\s+html>|<html[\s>]/i);
+  if (start === -1) return null;
+  const rest = text.slice(start);
+  const endRel = rest.search(/<\/html>/i);
+  const end = endRel === -1 ? text.length : start + endRel + "</html>".length;
+  const frag = text.slice(start, end).trim();
+  return frag || null;
 }
 
 function splitByHeadings(text) {
@@ -267,127 +326,135 @@ function splitByHeadings(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (INLINE_LANG_LINE_RE.test(line)) {
-      current = line.trim().replace(/:$/,"").toLowerCase();
+      current = line.trim().replace(/:$/, "").toLowerCase();
       if (current === "javascript") current = "js";
       if (current === "htm") current = "html";
-      sections[current] = [];
+      if (!sections[current]) sections[current] = [];
       continue;
     }
-    if (!current) continue;
-    sections[current].push(line);
+    if (current) sections[current].push(line);
   }
-  // compact
   const out = {};
-  Object.keys(sections).forEach(k => {
+  for (const k of Object.keys(sections)) {
     const v = sections[k].join("\n").trim();
     if (v) out[k] = v;
-  });
+  }
   return out;
 }
 
 function assembleHtml({ html, css, js }) {
-  // If no HTML but we have CSS or JS, scaffold it
   if (!html) {
-    if (js && !css) {
-      return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>App</title></head>
-<body><script>
-${js}
-</script></body></html>`;
-    }
-    if (css && !js) {
-      return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>App</title><style>
-${css}
-</style></head>
-<body></body></html>`;
-    }
-    if (css && js) {
-      return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>App</title><style>
-${css}
-</style></head>
-<body><script>
-${js}
-</script></body></html>`;
-    }
-    // Nothing? return blank doc
-    return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body></body></html>";
+    const headBits = [];
+    if (css) headBits.push(`<style>\n${css}\n</style>`);
+    const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${
+      headBits.length ? "\n" + headBits.join("\n") : ""
+    }`;
+    const bodyScript = js ? `\n<script>\n${js}\n</script>` : "";
+    return `<!DOCTYPE html>
+<html><head>${head}</head><body>${bodyScript}</body></html>`;
   }
-
   let result = html;
-
-  // Inject CSS if not already in HTML
   if (css) {
-    if (/<style[\s>]/i.test(result)) {
-      // append another style block in head or before </head>
-      result = result.replace(/<\/head>/i, `<style>\n${css}\n</style>\n</head>`);
-    } else if (/<head[\s>]/i.test(result)) {
+    if (/<\/head>/i.test(result)) {
       result = result.replace(/<\/head>/i, `<style>\n${css}\n</style>\n</head>`);
     } else {
-      // create head
-      result = result.replace(/<html[^>]*>/i, `$&\n<head><style>\n${css}\n</style></head>`);
+      result = result.replace(
+        /<html[^>]*>/i,
+        `$&\n<head><style>\n${css}\n</style></head>`
+      );
     }
   }
-
-  // Inject JS if not already in HTML
   if (js) {
-    if (/<script[\s>]/i.test(result)) {
-      // append another script before </body> if possible
-      if (/<\/body>/i.test(result)) {
-        result = result.replace(/<\/body>/i, `<script>\n${js}\n</script>\n</body>`);
-      } else {
-        result += `\n<script>\n${js}\n</script>`;
-      }
-    } else if (/<\/body>/i.test(result)) {
+    if (/<\/body>/i.test(result)) {
       result = result.replace(/<\/body>/i, `<script>\n${js}\n</script>\n</body>`);
     } else {
       result += `\n<script>\n${js}\n</script>`;
     }
   }
-
   return result;
 }
 
 function parseGeneratedCode(fullText) {
-  // 1) Try fenced block first
-  const fenced = extractFenced(fullText);
-  if (fenced?.code?.trim()) {
-    return { lang: fenced.lang || "html", code: fenced.code, source: "fenced" };
+  const text = fullText || "";
+
+  const fenced = collectFencedBlocks(text);
+  const fencedHtml = fenced.filter((b) => b.lang === "html" || b.lang === "htm");
+  const fencedCss = fenced.filter((b) => b.lang === "css");
+  const fencedJs = fenced.filter(
+    (b) =>
+      b.lang === "js" ||
+      b.lang === "javascript" ||
+      b.lang === "ts" ||
+      b.lang === "typescript"
+  );
+
+  const htmlFrag = findHtmlFragment(text);
+  if (htmlFrag) {
+    const css = fencedCss.map((b) => b.code).join("\n\n").trim();
+    const js = fencedJs.map((b) => b.code).join("\n\n").trim();
+    const merged = assembleHtml({
+      html: htmlFrag,
+      css: css || null,
+      js: js || null,
+    });
+    return { lang: "html", code: merged, source: "html-fragment+merge" };
   }
 
-  // 2) Try raw HTML fragment
-  const htmlFrag = findHtmlFragment(fullText);
-  if (htmlFrag?.code?.trim()) {
-    return { lang: "html", code: htmlFrag.code, source: "html-fragment" };
-  }
-
-  // 3) Try "html/css/js" headings (unfenced)
-  const sections = splitByHeadings(fullText);
+  const sections = splitByHeadings(text);
   if (sections.html || sections.css || sections.js) {
     const merged = assembleHtml({
-      html: sections.html,
-      css: sections.css,
-      js: sections.js || sections.javascript || sections.ts || sections.typescript
+      html: sections.html || null,
+      css: sections.css || null,
+      js:
+        sections.js ||
+        sections.javascript ||
+        sections.ts ||
+        sections.typescript ||
+        null,
     });
     return { lang: "html", code: merged, source: "headings-merge" };
   }
 
-  // 4) Fallback: if it looks like HTML anywhere, grab from first tag-y line
-  const maybeTagIdx = fullText.search(/<(!DOCTYPE|html|head|body|canvas|div|section|main|script|style)\b/i);
+  if (fenced.length) {
+    const htmlLongest =
+      fencedHtml.sort((a, b) => b.code.length - a.code.length)[0]?.code || null;
+    const cssMerged = fencedCss.map((b) => b.code).join("\n\n").trim() || null;
+    const jsMerged = fencedJs.map((b) => b.code).join("\n\n").trim() || null;
+    const merged = assembleHtml({
+      html: htmlLongest,
+      css: cssMerged,
+      js: jsMerged,
+    });
+    return {
+      lang: "html",
+      code: merged,
+      source: htmlLongest ? "fenced-html-merge" : "fenced-scaffold",
+    };
+  }
+
+  const maybeTagIdx = text.search(
+    /<(!DOCTYPE|html|head|body|canvas|div|section|main|script|style)\b/i
+  );
   if (maybeTagIdx !== -1) {
-    const tail = fullText.slice(maybeTagIdx).trim();
+    const tail = text.slice(maybeTagIdx).trim();
     return { lang: "html", code: tail, source: "html-tail" };
   }
 
-  // 5) Last fallback: treat everything as JS inside a scaffold
-  const js = fullText.trim();
+  const js = text.trim();
   const html = assembleHtml({ js });
   return { lang: "html", code: html, source: "fallback-js-scaffold" };
 }
+
+/**********************
+ * Helpers
+ **********************/
+const sanitizeSlugClient = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 64) || "proj";
 
 /**********************
  * MAIN APP
@@ -402,7 +469,7 @@ function SurfersApp() {
   const [code, setCode] = useState("");
 
   // attachments (home)
-  const [images, setImages] = useState([]);
+  const [images, setImages] = useState([]); // {file, url, name}
   const [figmas, setFigmas] = useState([]);
   const [showAttach, setShowAttach] = useState(false);
 
@@ -427,7 +494,6 @@ function SurfersApp() {
   const [showJump, setShowJump] = useState(false);
 
   const streamAbortRef = useRef(null);
-  const interruptedRef = useRef(false);
   const streamBufRef = useRef({ buf: "", t: null });
 
   const flushNow = (asstId) => {
@@ -446,7 +512,7 @@ function SurfersApp() {
   const prevUidRef = useRef(null);
 
   // chat attachments
-  const [chatImages, setChatImages] = useState([]);
+  const [chatImages, setChatImages] = useState([]); // {file, url, name}
   const [chatFigmas, setChatFigmas] = useState([]);
   const [showChatAttach, setShowChatAttach] = useState(false);
 
@@ -457,14 +523,25 @@ function SurfersApp() {
   const [pendingImages, setPendingImages] = useState([]);
 
   // action modals
-  const [modal, setModal] = useState({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+  const [modal, setModal] = useState({
+    type: null,
+    msgId: null,
+    code: "",
+    lang: "",
+    url: "",
+    note: "",
+  });
 
   // ===== preview + publish state =====
   const [previews, setPreviews] = useState({});
   const [published, setPublished] = useState({});
   const [previewStatus, setPreviewStatus] = useState("idle"); // idle | building | ready | error
 
-  const previewUrlRef = useRef(null);
+  // ---- Go Live modal local state (NEW, design unchanged) ----
+  const [liveSlug, setLiveSlug] = useState("");
+  const [copiedSlug, setCopiedSlug] = useState(false);
+  const [livePublishing, setLivePublishing] = useState(false);
+  const [liveResultUrl, setLiveResultUrl] = useState("");
 
   // refs (home)
   const formRef = useRef(null);
@@ -480,7 +557,7 @@ function SurfersApp() {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
-  // Normalize preview/publish URLs to API origin (fixes "my app inside preview")
+  // normalize backend-relative links
   const makeAbsoluteUrl = (u) => {
     try {
       return new URL(u, API_URL).toString();
@@ -502,11 +579,13 @@ function SurfersApp() {
   const [blink, setBlink] = useState(true);
   const typewriter = TW_PREFIX + TW_LIST[twIdx].slice(0, twSub) + (blink ? " |" : "  ");
 
+  // caret blink
   useEffect(() => {
     const t = setInterval(() => setBlink((b) => !b), 500);
     return () => clearInterval(t);
   }, []);
 
+  // typing/deleting loop (paused when user is typing)
   useEffect(() => {
     if (prompt) return;
     const full = TW_LIST[twIdx];
@@ -535,6 +614,7 @@ function SurfersApp() {
     return () => clearTimeout(timer);
   }, [prompt, twIdx, twSub, twDeleting]);
 
+  // observe bottom visibility (future "jump to latest")
   useEffect(() => {
     if (!chatEndRef.current) return;
     const observer = new IntersectionObserver(
@@ -549,6 +629,7 @@ function SurfersApp() {
     return () => observer.disconnect();
   }, []);
 
+  // auth changes → clear cross-account state
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (currentUser) => {
       const newUid = currentUser?.uid || null;
@@ -562,6 +643,7 @@ function SurfersApp() {
     return () => unsub();
   }, []);
 
+  // after login, auto-send pending
   useEffect(() => {
     if (user && pendingPrompt) {
       const toSend = pendingPrompt;
@@ -579,9 +661,15 @@ function SurfersApp() {
     }
   }, [user, pendingPrompt, pendingImages]);
 
+  // cleanup on unmount
   useEffect(() => () => stopStreaming(), []);
-  useEffect(() => { if (view === "home") stopStreaming(); }, [view]);
 
+  // stop streaming when leaving chat
+  useEffect(() => {
+    if (view === "home") stopStreaming();
+  }, [view]);
+
+  // receive messages from preview iframe (ready/error)
   useEffect(() => {
     const onMsg = (e) => {
       const d = e?.data;
@@ -653,6 +741,7 @@ function SurfersApp() {
   };
   useEffect(() => { resizeChatTextarea(); }, [chatInput]);
 
+  // type anywhere to focus active input
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName || "")) return;
@@ -664,8 +753,10 @@ function SurfersApp() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view]);
 
+  // auto focus chat box when entering chat view
   useEffect(() => { if (view === "chat") chatTextareaRef.current?.focus(); }, [view]);
 
+  // popover toggles
   useEffect(() => {
     if (!showAttach) return;
     const onClick = (e) => { if (attachRef.current && !attachRef.current.contains(e.target)) setShowAttach(false); };
@@ -683,6 +774,7 @@ function SurfersApp() {
     return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
   }, [showChatAttach]);
 
+  // file pickers
   const onAddImageClick = () => { fileInputRef.current?.click(); setShowAttach(false); };
   const onFilesPicked = (e) => {
     const files = Array.from(e.target.files || []);
@@ -717,6 +809,7 @@ function SurfersApp() {
   const removeChatImage = (i) => setChatImages((prev) => prev.filter((_, idx) => idx !== i));
   const removeChatFigma = (i) => setChatFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
+  // helpers
   const addAssistantPlaceholder = () => {
     const id = Date.now() + Math.random();
     setMessages((prev) => [...prev, { id, role: "assistant", content: "", streaming: true }]);
@@ -749,6 +842,7 @@ function SurfersApp() {
     setPhase(null);
   };
 
+  // wipe all UI/chat state
   const clearConversationState = () => {
     stopStreaming();
     setMessages([]);
@@ -765,7 +859,7 @@ function SurfersApp() {
     setPublished({});
   };
 
-  // Non-stream fallback (rare)
+  // non-stream fallback (HOME only)
   async function sendMessage(text) {
     const id = Date.now();
     setMessages((prev) => [...prev, { id, role: "user", content: text }]);
@@ -785,17 +879,14 @@ function SurfersApp() {
     }
   }
 
-  // STREAMING via fetch + FormData
+  // STREAMING (raw/SSE/NDJSON)
   async function sendMessageStream(text, attachments = []) {
     const userId = Date.now();
     setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
     const asstId = addAssistantPlaceholder();
     setPhase("connecting");
     streamBufRef.current.buf = "";
-    if (streamBufRef.current.t) {
-      clearTimeout(streamBufRef.current.t);
-      streamBufRef.current.t = null;
-    }
+    if (streamBufRef.current.t) { clearTimeout(streamBufRef.current.t); streamBufRef.current.t = null; }
 
     scrollMessageToTop(userId);
 
@@ -803,13 +894,10 @@ function SurfersApp() {
     const formData = new FormData();
     formData.append("prompt", text);
     formData.append("history", JSON.stringify(hist));
-    attachments.forEach((img) => {
-      if (img?.file) formData.append("images", img.file, img.name || "image.png");
-    });
+    attachments.forEach((img) => { if (img?.file) formData.append("images", img.file, img.name || "image.png"); });
 
     const ac = new AbortController();
     streamAbortRef.current = ac;
-    interruptedRef.current = false;
 
     let idleTimer = null;
     let hardCapTimer = null;
@@ -839,27 +927,21 @@ function SurfersApp() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
 
+      // generic ingestor (supports raw/SSE/NDJSON) — simplified here (raw)
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         const chunkStr = decoder.decode(value, { stream: true });
         if (chunkStr) {
           streamBufRef.current.buf += chunkStr;
           scheduleFlush(asstId);
           if (/\S/.test(chunkStr)) gotAny = true;
-
-          if (/```|\b(import|class|def|function|const|let|var)\b/.test(chunkStr)) {
-            setPhase("coding");
-          } else if (!gotAny) {
-            setPhase("generating");
-          }
+          if (/```|\b(import|class|def|function|const|let|var)\b/.test(chunkStr)) setPhase("coding");
+          else if (!gotAny) setPhase("generating");
         }
-
         armTimers();
       }
 
-      // Ensure the very last buffered chunk is flushed even if no [DONE]
       flushNow(asstId);
     } catch (err) {
       const msg = String(err?.name || err || "");
@@ -870,15 +952,13 @@ function SurfersApp() {
     } finally {
       clearTimers();
       if (streamAbortRef.current === ac) streamAbortRef.current = null;
-      if (!gotAny) {
-        appendToAssistant(asstId, "\n// (no content received — check server logs or network)");
-      }
+      if (!gotAny) appendToAssistant(asstId, "\n// (no content received — check server logs or network)");
       setPhase(null);
       setIsStreaming(false);
     }
   }
 
-  // HOME SUBMIT
+  // HOME SUBMIT — clear input BEFORE sending
   async function onSubmit(e) {
     e.preventDefault();
     if (isStreaming) stopStreaming("new-message");
@@ -904,7 +984,7 @@ function SurfersApp() {
     setTimeout(() => sendMessageStream(first, imgs), 0);
   }
 
-  // CHAT SEND
+  // CHAT SEND — clear input BEFORE sending
   const sendFromChat = (e) => {
     e.preventDefault();
     if (isStreaming) stopStreaming("new-message");
@@ -932,30 +1012,39 @@ function SurfersApp() {
   // ===== helpers for “code / view / go live” =====
   const getMsgById = (id) => messages.find((m) => m.id === id);
 
-  // Original fenced-only helper (kept if needed elsewhere)
+  // first fenced code block extractor
   const extractFirstCodeBlock = (text) => {
-    const m = (text || "").match(FENCE_RE);
+    const m = (text || "").match(/```(\w+)?\n([\s\S]*?)```/);
     if (!m) return { lang: "", code: "" };
     return { lang: (m[1] || "").toLowerCase(), code: m[2] || "" };
   };
 
-  // Build/Preview pipeline (now robust against unfenced replies)
+  // hide fenced code blocks and full html docs from the chat bubble,
+  // plus hide lone "index.html" mention lines (per your rule)
+  const stripFenced = (t) => (t || "").replace(/```[\s\S]*?```/g, "");
+  const stripHtmlDoc = (t) =>
+    (t || "")
+      .replace(/<!DOCTYPE[\s\S]*?<\/html>/gi, "")
+      .replace(/<html[\s\S]*?<\/html>/gi, "");
+  const stripIndexHtmlMention = (t) =>
+    (t || "").replace(/^\s*index\.html\s*:?\s*$/gim, "");
+  const stripGeneratedCodeFromChat = (t) =>
+    stripIndexHtmlMention(stripHtmlDoc(stripFenced(t)));
+
+  // ===== preview build =====
   async function buildOrUpdatePreview(msgId) {
     const msg = getMsgById(msgId);
     const fullText = msg?.content || "";
     const parsed = parseGeneratedCode(fullText);
     if (!parsed.code || !parsed.code.trim()) {
+      setPreviewStatus("error");
       setModal((m) => ({ ...m, note: "No usable code found in this message." }));
       return;
     }
     setPreviewStatus("building");
 
     const existing = previews[msgId];
-    const payload = {
-      code: parsed.code,
-      lang: parsed.lang || "html",
-      artifactId: existing?.artifactId || null,
-    };
+    const payload = { code: parsed.code, lang: parsed.lang || "html", artifactId: existing?.artifactId || null };
 
     try {
       const res = await fetch(`${API_URL}/api/preview/build`, {
@@ -964,17 +1053,14 @@ function SurfersApp() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        setPreviewStatus("error");
         const txt = await res.text().catch(() => "");
+        setPreviewStatus("error");
         setModal((m) => ({ ...m, note: `build failed: ${txt || res.status}` }));
         return;
       }
       const data = await res.json();
       const absUrl = makeAbsoluteUrl(data.previewUrl);
-      const next = {
-        artifactId: data.artifactId,
-        url: absUrl,
-      };
+      const next = { artifactId: data.artifactId, url: absUrl };
       setPreviews((p) => ({ ...p, [msgId]: next }));
 
       const src = `${next.url}${next.url.includes("?") ? "&" : "?"}t=${Date.now()}`;
@@ -1007,6 +1093,16 @@ function SurfersApp() {
     await buildOrUpdatePreview(id);
   };
 
+  // === Go live ===
+  const copySlugToClipboard = async () => {
+    const full = `${sanitizeSlugClient(liveSlug)}.surfers.co.in`;
+    try {
+      await navigator.clipboard?.writeText(full);
+      setCopiedSlug(true);
+      setTimeout(() => setCopiedSlug(false), 1200);
+    } catch {}
+  };
+
   const openLiveModal = async (id) => {
     const prev = previews[id];
     if (!prev?.artifactId) {
@@ -1016,16 +1112,28 @@ function SurfersApp() {
     }
     const defaultSlugBase = (user?.uid || "anon").slice(0, 6);
     const defaultSlug = `proj-${defaultSlugBase}-${String(id).slice(-4)}`;
-    const input = window.prompt("project slug for live URL (letters, numbers, dashes):", defaultSlug);
-    if (!input) return;
+    setLiveSlug(defaultSlug);
+    setLivePublishing(false);
+    setLiveResultUrl("");
+    setCopiedSlug(false);
+    setModal({ type: "live", msgId: id, code: "", lang: "", url: "", note: "" });
+  };
 
-    const slug = input.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-    if (!slug) {
-      alert("Invalid slug.");
+  const publishLive = async () => {
+    if (!modal.msgId) return;
+    const prev = previews[modal.msgId];
+    if (!prev?.artifactId) {
+      setModal((m) => ({ ...m, note: "Preview not available. Build a preview first." }));
       return;
     }
-
+    const slug = sanitizeSlugClient(liveSlug);
+    if (!slug) {
+      setModal((m) => ({ ...m, note: "Invalid project name." }));
+      return;
+    }
     try {
+      setLivePublishing(true);
+      setModal((m) => ({ ...m, note: "" }));
       const res = await fetch(`${API_URL}/api/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1033,46 +1141,29 @@ function SurfersApp() {
       });
       if (!res.ok) {
         const t = await res.text().catch(() => "");
-        setModal({
-          type: "live",
-          msgId: id,
-          code: "",
-          lang: "",
-          url: "",
-          note: `Publish failed: ${t || res.status}`,
-        });
+        setModal((m) => ({ ...m, note: `Publish failed: ${t || res.status}` }));
+        setLivePublishing(false);
         return;
       }
       const data = await res.json(); // { liveUrl, project, artifactId }
       const liveAbs = makeAbsoluteUrl(data.liveUrl);
       setPublished((p) => ({ ...p, [data.project]: data.artifactId }));
-      setModal({
-        type: "live",
-        msgId: id,
-        code: "",
-        lang: "",
-        url: liveAbs,
-        note: "Live! Share this URL. Re-run publish with the same slug to update.",
-      });
+      setLiveResultUrl(liveAbs); // show the link below the button
+      setModal((m) => ({ ...m, note: "Live! Share this URL. Re-run publish with the same slug to update." }));
     } catch (err) {
-      setModal({
-        type: "live",
-        msgId: id,
-        code: "",
-        lang: "",
-        url: "",
-        note: `Publish failed: ${String(err)}`,
-      });
+      setModal((m) => ({ ...m, note: `Publish failed: ${String(err)}` }));
+    } finally {
+      setLivePublishing(false);
     }
   };
 
   const closeModal = () => {
     setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
     setPreviewStatus("idle");
+    setLivePublishing(false);
+    setLiveResultUrl("");
+    setCopiedSlug(false);
   };
-
-  // Hide fenced code blocks from the chat bubble (we keep the original in state)
-  const stripFencedCodeBlocks = (text) => (text || "").replace(/```[\s\S]*?```/g, "");
 
   return (
     <div className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col">
@@ -1198,7 +1289,7 @@ function SurfersApp() {
                 const isAssistant = m.role === "assistant";
                 const hasContent = (m.content ?? "").trim() !== "";
 
-                const cleaned = isAssistant ? stripFencedCodeBlocks(m.content || "") : (m.content || "");
+                const cleaned = isAssistant ? stripGeneratedCodeFromChat(m.content || "") : (m.content || "");
                 const textToShow = (cleaned || "").trim() || (isAssistant ? "_generated code ready — use the buttons below._" : "");
 
                 return (
@@ -1322,11 +1413,7 @@ function SurfersApp() {
           </div>
 
           {/* ===== ACTION MODALS ===== */}
-          <Modal
-            open={modal.type === "code"}
-            onClose={closeModal}
-            title="Code"
-          >
+          <Modal open={modal.type === "code"} onClose={closeModal} title="Code">
             <div className="w-full h-full overflow-auto p-3">
               {modal.code
                 ? <Markdown>{` \`\`\`${modal.lang || ""}\n${modal.code}\n\`\`\` `}</Markdown>
@@ -1372,24 +1459,82 @@ function SurfersApp() {
             }
           </Modal>
 
-          <Modal open={modal.type === "live"} onClose={closeModal} title="Go live">
-            <div className="w-full h-full overflow-auto p-4 text-[#EDEDED]">
-              <p className="mb-3">{modal.note}</p>
-              {modal.url ? (
-                <div className="rounded-lg border border-[#2A2A2A] bg-[#0f0f10] p-3">
-                  <p className="text-sm mb-2">public URL:</p>
-                  <a href={modal.url} target="_blank" rel="noreferrer" className="underline decoration-[#4b9fff] break-all">{modal.url}</a>
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard?.writeText(modal.url)}
-                      className="px-4 py-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325]"
-                    >
-                      copy link
-                    </button>
+          {/* ===== GO LIVE MODAL (same design, now with copy + link after publish) ===== */}
+          <Modal open={modal.type === "live"} onClose={closeModal} title="">
+            <div className="w-full h-full overflow-auto flex items-center justify-center p-6">
+              <div className="w-[min(680px,92%)] text-[#EDEDED]">
+                {/* header (keep your style) */}
+                <div className="text-center mb-6">
+                  <div className="text-[44px] font-extrabold leading-none">
+                    <span className="text-[#EDEDED]">go live.</span>{" "}
+                    <span className="text-[#ff4747]">yeah.</span>
                   </div>
                 </div>
-              ) : null}
+
+                {/* slug input + copy (kept style) */}
+                <div className="flex items-stretch gap-2">
+                  <div className="flex-1 flex items-center rounded-xl bg-white text-[#1b1b1b] overflow-hidden">
+                    <input
+                      value={liveSlug}
+                      onChange={(e) => setLiveSlug(sanitizeSlugClient(e.target.value))}
+                      className="flex-1 px-4 py-3 outline-none text-[16px]"
+                      placeholder="project-name"
+                    />
+                    <div className="px-3 text-[16px] font-medium text-[#555] border-l border-neutral-200">
+                      .surfers.co.in
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={copySlugToClipboard}
+                    className={`px-3 rounded-xl border ${copiedSlug ? "border-[#1a73e8] bg-[#1a73e8] text-white" : "border-[#2A2A2A] bg-[#1B1B1C] text-[#EDEDED]"} flex items-center justify-center`}
+                    title="Copy full domain"
+                  >
+                    <CopyIcon active={copiedSlug} />
+                  </button>
+                </div>
+
+                <div className="text-center mt-2">
+                  <a className="text-[#4b9fff] underline cursor-pointer text-sm">
+                    check the availability of domain
+                  </a>
+                </div>
+
+                {/* publish button */}
+                <div className="mt-5">
+                  <button
+                    disabled={livePublishing}
+                    onClick={publishLive}
+                    className={`w-full py-4 rounded-2xl text-white text-lg font-semibold ${livePublishing ? "bg-[#b83a3a] cursor-not-allowed" : "bg-[#EA3838] hover:bg-[#ff3d3d]"} transition-colors`}
+                  >
+                    {livePublishing ? "going live…" : "go live. fast. dude."}
+                  </button>
+                </div>
+
+                {/* live link shown only after publish */}
+                {liveResultUrl && (
+                  <div className="mt-4 flex items-center justify-between rounded-xl border border-[#2A2A2A] bg-[#0f0f10] p-3">
+                    <div className="text-sm text-[#C8CCD2]">live link:</div>
+                    <a
+                      href={liveResultUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 underline decoration-[#4b9fff]"
+                    >
+                      <ExtLinkIcon />
+                      <span className="break-all">{liveResultUrl}</span>
+                    </a>
+                  </div>
+                )}
+
+                {/* footnote + any message */}
+                <div className="mt-4 text-center text-[#9AA0A6]">
+                  making your website live will enable anyone to use it anywhere.
+                </div>
+                {modal.note && (
+                  <div className="mt-3 text-center text-red-400 text-sm">{modal.note}</div>
+                )}
+              </div>
             </div>
           </Modal>
         </>
@@ -1400,7 +1545,7 @@ function SurfersApp() {
           <Container>
             <p className="mx-auto text-center text-[12px] leading-[18px] text-[#9AA0A6]">
               privacy policy  •  terms &amp; use  •  type it. see it. launch it. —— your ideas live in seconds.
-              surfers codes anything better. faster.  •  2025 © surfers.
+              surfers codes anything better. faster.  •  2025 © surfers · {VERSION_TAG}
             </p>
           </Container>
         </footer>

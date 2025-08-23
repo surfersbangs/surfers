@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeHub - GitHub Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.5;
+        }
+
+        .header {
+            background-color: #161b22;
+            padding: 16px 32px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+            color: #f0f6fc;
+        }
+
+        .nav {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav a {
+            color: #c9d1d9;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .nav a:hover {
+            color: #58a6ff;
+        }
+
+        .search {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 8px 16px;
+            color: #c9d1d9;
+            width: 300px;
+        }
+
+        .search:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        .repo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .repo-card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+            transition: transform 0.2s;
+        }
+
+        .repo-card:hover {
+            transform: translateY(-2px);
+            border-color: #58a6ff;
+        }
+
+        .repo-name {
+            color: #58a6ff;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-decoration: none;
+        }
+
+        .repo-desc {
+            color: #8b949e;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .repo-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #8b949e;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .language {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #58a6ff;
+        }
+
+        .javascript { background-color: #f1e05a; }
+        .python { background-color: #3572A5; }
+        .html { background-color: #e34c26; }
+        .css { background-color: #563d7c; }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #30363d;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">CodeHub</div>
+        <nav class="nav">
+            <a href="#">Dashboard</a>
+            <a href="#">Repositories</a>
+            <a href="#">Projects</a>
+            <a href="#">Teams</a>
+            <a href="#">Organizations</a>
+        </nav>
+        <input type="text" class="search" placeholder="Search repositories...">
+        <div class="user-section">
+            <div class="avatar"></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>Popular Repositories</h1>
+        <div class="repo-grid">
+            <div class="repo-card">
+                <a href="#" class="repo-name">react</a>
+                <p class="repo-desc">A declarative, efficient, and flexible JavaScript library for building user interfaces.</p>
+                <div class="repo-meta">
+                    <span class="meta-item">
+                        <span class="language javascript"></span>
+                        JavaScript
+                    </span>
+                    <span class="meta-item">⭐ 178k</span>
+                    <span class="meta-item">🔀 36k</span>
+                </div>
+            </div>
+
+            <div class="repo-card">
+                <a href="#" class="repo-name">vue</a>
+                <p class="repo-desc">Vue.js is a progressive, incrementally-adoptable JavaScript framework for building UI on the web.</p>
+                <div class="repo-meta">
+                    <span class="meta-item">
+                        <span class="language javascript"></span>
+                        JavaScript
+                    </span>
+                    <span class="meta-item">⭐ 192k</span>
+                    <span class="meta-item">🔀 31k</span>
+                </div>
+            </div>
+
+            <div class="repo-card">
+                <a href="#" class="repo-name">django</a>
+                <p class="repo-desc">The Web framework for perfectionists with deadlines.</p>
+                <div class="repo-meta">
+                    <span class="meta-item">
+                        <span class="language python"></span>
+                        Python
+                    </span>
+                    <span class="meta-item">⭐ 63k</span>
+                    <span class="meta-item">🔀 27k</span>
+                </div>
+            </div>
+
+            <div class="repo-card">
+                <a href="#" class="repo-name">tensorflow</a>
+                <p class="repo-desc">An Open Source Machine Learning Framework for Everyone</p>
+                <div class="repo-meta">
+                    <span class="meta-item">
+                        <span class="language python"></span>
+                        Python
+                    </span>
+                    <span class="meta-item">⭐ 164k</span>
+                    <span class="meta-item">🔀 87k</span>
+                </div>
+            </div>
+
+            <div class="repo-card">
+                <a href="#" class="repo-name">vscode</a>
+                <p class="repo-desc">Visual Studio Code</p>
+                <div class="repo-meta">
+                    <span class="meta-item">
+                        <span class="language javascript"></span>
+                        TypeScript
+                    </span>
+                    <span class="meta-item">⭐ 132k</span>
+                    <span class="meta-item">🔀 23k</span>
+                </div>
+            </div>
+
+            <div class="repo-card">
+                <a href="#" class="repo-name">bootstrap</a>
+                <p class="repo-desc">The most popular HTML, CSS, and JavaScript framework for developing responsive, mobile first projects on the web.</p>
+                <div class="repo-meta">
+                    <span class="meta-item">
+                        <span class="language javascript"></span>
+                        JavaScript
+                    </span>
+                    <span class="meta-item">⭐ 156k</span>
+                    <span class="meta-item">🔀 76k</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple search functionality
+        const searchInput = document.querySelector('.search');
+        const repoCards = document.querySelectorAll('.repo-card');
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            repoCards.forEach(card => {
+                const repoName = card.querySelector('.repo-name').textContent.toLowerCase();
+                const repoDesc = card.querySelector('.repo-desc').textContent.toLowerCase();
+                
+                if (repoName.includes(searchTerm) || repoDesc.includes(searchTerm)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

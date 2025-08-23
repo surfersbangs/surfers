@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HotelBooking - Find Your Perfect Stay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 1.5rem;
+        }
+        
+        .hero {
+            background: url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80') center/cover no-repeat;
+            height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            position: relative;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            padding: 2rem;
+        }
+        
+        .search-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .search-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        input, select, button {
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        .hotels {
+            padding: 3rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .hotel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .hotel-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .hotel-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .hotel-image {
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .hotel-info {
+            padding: 1.5rem;
+        }
+        
+        .hotel-price {
+            color: #667eea;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+        
+        .book-btn {
+            width: 100%;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">HotelBooking</div>
+        <nav>
+            <a href="#">Home</a>
+            <a href="#">Hotels</a>
+            <a href="#">About</a>
+            <a href="#">Contact</a>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Find Your Perfect Stay</h1>
+            <p>Discover amazing hotels at the best prices</p>
+            <div class="search-box">
+                <form class="search-form" onsubmit="searchHotels(event)">
+                    <input type="text" placeholder="Destination" required>
+                    <input type="date" placeholder="Check-in" required>
+                    <input type="date" placeholder="Check-out" required>
+                    <select>
+                        <option>1 Guest</option>
+                        <option>2 Guests</option>
+                        <option>3 Guests</option>
+                        <option>4+ Guests</option>
+                    </select>
+                    <button type="submit">Search</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="hotels">
+        <h2>Popular Hotels</h2>
+        <div class="hotel-grid">
+            <div class="hotel-card">
+                <div class="hotel-image" style="background-image: url('https://images.unsplash.com/photo-1564501049412-61c2a3083791?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80')"></div>
+                <div class="hotel-info">
+                    <h3>Grand Plaza Hotel</h3>
+                    <p>⭐️⭐️⭐️⭐️⭐️ (4.8)</p>
+                    <p class="hotel-price">$150 / night</p>
+                    <p>Luxury accommodation in the heart of the city</p>
+                    <button class="book-btn" onclick="bookHotel('Grand Plaza Hotel')">Book Now</button>
+                </div>
+            </div>
+
+            <div class="hotel-card">
+                <div class="hotel-image" style="background-image: url('https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80')"></div>
+                <div class="hotel-info">
+                    <h3>Beachside Resort</h3>
+                    <p>⭐️⭐️⭐️⭐️ (4.5)</p>
+                    <p class="hotel-price">$200 / night</p>
+                    <p>Stunning ocean views and private beach access</p>
+                    <button class="book-btn" onclick="bookHotel('Beachside Resort')">Book Now</button>
+                </div>
+            </div>
+
+            <div class="hotel-card">
+                <div class="hotel-image" style="background-image: url('https://images.unsplash.com/photo-1571896349842-33c89424de2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80')"></div>
+                <div class="hotel-info">
+                    <h3>Mountain Retreat</h3>
+                    <p>⭐️⭐️⭐️⭐️⭐️ (4.9)</p>
+                    <p class="hotel-price">$180 / night</p>
+                    <p>Peaceful getaway in the mountains</p>
+                    <button class="book-btn" onclick="bookHotel('Mountain Retreat')">Book Now</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 HotelBooking. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function searchHotels(event) {
+            event.preventDefault();
+            alert('Search functionality would connect to a backend system in a real application');
+        }
+
+        function bookHotel(hotelName) {
+            const checkIn = prompt('Enter check-in date (YYYY-MM-DD):');
+            const checkOut = prompt('Enter check-out date (YYYY-MM-DD):');
+            const guests = prompt('Number of guests:');
+            
+            if (checkIn && checkOut && guests) {
+                alert(`Booking confirmed!\nHotel: ${hotelName}\nCheck-in: ${checkIn}\nCheck-out: ${checkOut}\nGuests: ${guests}`);
+            }
+        }
+
+        // Set minimum dates for date inputs
+        const today = new Date().toISOString().split('T')[0];
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            input.min = today;
+        });
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

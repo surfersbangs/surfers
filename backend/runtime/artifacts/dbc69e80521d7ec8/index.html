@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Angry Birds Clone</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #87CEEB;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            background: #8BC34A;
+            border: 2px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h2>Angry Birds Clone</h2>
+        <p>Click and drag to launch the bird!</p>
+        <p>Score: <span id="score">0</span></p>
+        <button onclick="resetGame()">Reset Game</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+
+        // Game state
+        let score = 0;
+        let bird = {
+            x: 100,
+            y: 400,
+            radius: 15,
+            color: '#FF5722',
+            launched: false,
+            velocityX: 0,
+            velocityY: 0
+        };
+
+        let targets = [
+            { x: 600, y: 400, width: 40, height: 40, color: '#795548', hit: false },
+            { x: 650, y: 400, width: 40, height: 40, color: '#795548', hit: false },
+            { x: 700, y: 400, width: 40, height: 40, color: '#795548', hit: false },
+            { x: 625, y: 350, width: 40, height: 40, color: '#795548', hit: false },
+            { x: 675, y: 350, width: 40, height: 40, color: '#795548', hit: false }
+        ];
+
+        let slingshot = {
+            x: 100,
+            y: 400,
+            pulled: false,
+            pullX: 0,
+            pullY: 0
+        };
+
+        let gameOver = false;
+
+        // Physics constants
+        const gravity = 0.4;
+        const friction = 0.99;
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw ground
+            ctx.fillStyle = '#8BC34A';
+            ctx.fillRect(0, 450, canvas.width, 50);
+            
+            // Draw slingshot
+            ctx.strokeStyle = '#5D4037';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(80, 450);
+            ctx.lineTo(100, 400);
+            ctx.lineTo(120, 450);
+            ctx.stroke();
+            
+            // Draw slingshot band if pulled
+            if (slingshot.pulled) {
+                ctx.strokeStyle = '#FF5722';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(80, 450);
+                ctx.lineTo(slingshot.pullX, slingshot.pullY);
+                ctx.moveTo(120, 450);
+                ctx.lineTo(slingshot.pullX, slingshot.pullY);
+                ctx.stroke();
+            }
+            
+            // Draw bird
+            if (!bird.launched) {
+                ctx.fillStyle = bird.color;
+                ctx.beginPath();
+                ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Draw flying bird
+                ctx.fillStyle = bird.color;
+                ctx.beginPath();
+                ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw eyes
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(bird.x + 5, bird.y - 5, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(bird.x + 6, bird.y - 5, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw targets
+            targets.forEach(target => {
+                if (!target.hit) {
+                    ctx.fillStyle = target.color;
+                    ctx.fillRect(target.x - target.width/2, target.y - target.height/2, 
+                                target.width, target.height);
+                }
+            });
+            
+            // Draw game over message
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Game Over!', canvas.width/2, canvas.height/2 - 50);
+                ctx.font = '24px Arial';
+                ctx.fillText('Final Score: ' + score, canvas.width/2, canvas.height/2);
+                ctx.fillText('Click reset to play again', canvas.width/2, canvas.height/2 + 50);
+            }
+        }
+
+        function update() {
+            if (bird.launched) {
+                // Apply physics
+                bird.velocityY += gravity;
+                bird.x += bird.velocityX;
+                bird.y += bird.velocityY;
+                
+                // Apply friction
+                bird.velocityX *= friction;
+                bird.velocityY *= friction;
+                
+                // Check collisions with targets
+                targets.forEach(target => {
+                    if (!target.hit && 
+                        bird.x > target.x - target.width/2 &&
+                        bird.x < target.x + target.width/2 &&
+                        bird.y > target.y - target.height/2 &&
+                        bird.y < target.y + target.height/2) {
+                        target.hit = true;
+                        score += 100;
+                        scoreDisplay.textContent = score;
+                    }
+                });
+                
+                // Check boundaries
+                if (bird.y > 450 - bird.radius) {
+                    bird.y = 450 - bird.radius;
+                    bird.velocityY *= -0.6; // Bounce
+                    bird.velocityX *= 0.8; // Slow down
+                }
+                
+                if (bird.x > canvas.width + 50 || bird.x < -50 || 
+                    (Math.abs(bird.velocityX) < 0.1 && Math.abs(bird.velocityY) < 0.1 && bird.y > 440)) {
+                    checkGameOver();
+                }
+            }
+        }
+
+        function checkGameOver() {
+            const allTargetsHit = targets.every(target => target.hit);
+            const birdStopped = Math.abs(bird.velocityX) < 0.1 && Math.abs(bird.velocityY) < 0.1;
+            
+            if (allTargetsHit || (birdStopped && !allTargetsHit)) {
+                gameOver = true;
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            if (!gameOver) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            if (!bird.launched && !gameOver) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Check if mouse is near bird
+                const dist = Math.sqrt((mouseX - bird.x) ** 2 + (mouseY - bird.y) ** 2);
+                if (dist < bird.radius * 2) {
+                    slingshot.pulled = true;
+                    slingshot.pullX = mouseX;
+                    slingshot.pullY = mouseY;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (slingshot.pulled) {
+                const rect = canvas.getBoundingClientRect();
+                slingshot.pullX = e.clientX - rect.left;
+                slingshot.pullY = e.clientY - rect.top;
+                
+                // Limit pull distance
+                const maxPull = 100;
+                const pullX = slingshot.x - slingshot.pullX;
+                const pullY = slingshot.y - slingshot.pullY;
+                const distance = Math.sqrt(pullX * pullX + pullY * pullY);
+                
+                if (distance > maxPull) {
+                    const angle = Math.atan2(pullY, pullX);
+                    slingshot.pullX = slingshot.x - Math.cos(angle) * maxPull;
+                    slingshot.pullY = slingshot.y - Math.sin(angle) * maxPull;
+                }
+                
+                bird.x = slingshot.pullX;
+                bird.y = slingshot.pullY;
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (slingshot.pulled) {
+                bird.launched = true;
+                const power = 0.2;
+                bird.velocityX = (slingshot.x - bird.x) * power;
+                bird.velocityY = (slingshot.y - bird.y) * power;
+                slingshot.pulled = false;
+            }
+        });
+
+        function resetGame() {
+            bird = {
+                x: 100,
+                y: 400,
+                radius: 15,
+                color: '#FF5722',
+                launched: false,
+                velocityX: 0,
+                velocityY: 0
+            };
+            
+            targets = targets.map(target => ({
+                ...target,
+                hit: false
+            }));
+            
+            slingshot.pulled = false;
+            gameOver = false;
+            score = 0;
+            scoreDisplay.textContent = '0';
+            
+            if (!gameOver) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Start the game
+        gameLoop();
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

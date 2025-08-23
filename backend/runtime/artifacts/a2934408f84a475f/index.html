@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Rage - Ultimate Racing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            overflow: hidden;
+            cursor: none;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #game-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #2c3e50, #3498db);
+        }
+        
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e74c3c;
+        }
+        
+        .speedometer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #f39c12;
+            text-align: center;
+        }
+        
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #f39c12);
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+        
+        .minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #27ae60;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .weapon-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #9b59b6;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #3498db;
+            text-align: center;
+        }
+        
+        .game-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            border: 4px solid #e74c3c;
+            text-align: center;
+            z-index: 200;
+            min-width: 400px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #e74c3c, #f39c12);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+        }
+        
+        .score-popup {
+            position: absolute;
+            color: #f39c12;
+            font-size: 24px;
+            font-weight: bold;
+            animation: floatUp 1s ease-out;
+            pointer-events: none;
+        }
+        
+        .explosion {
+            position: absolute;
+            background: radial-gradient(circle, #ff9900, #ff0000, transparent);
+            border-radius: 50%;
+            animation: explode 0.5s ease-out;
+            pointer-events: none;
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        
+        .road-line {
+            position: absolute;
+            background: #ffffff;
+            animation: roadMove linear infinite;
+        }
+        
+        @keyframes roadMove {
+            0% { transform: translateY(100vh); }
+            100% { transform: translateY(-100px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <div class="ui-overlay">
+            <div class="hud">
+                <h2>ROAD RAGE</h2>
+                <div>Score: <span id="score">0</span></div>
+                <div>Distance: <span id="distance">0</span>m</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="health-fill" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <div class="speedometer">
+                <div>SPEED</div>
+                <div id="speed">0 km/h</div>
+                <div>NITRO: <span id="nitro">100%</span></div>
+            </div>
+            
+            <div class="minimap" id="minimap">
+                <!-- Minimap content generated by JS -->
+            </div>
+            
+            <div class="weapon-display">
+                <div>WEAPON: <span id="weapon">FISTS</span></div>
+                <div>AMMO: <span id="ammo">∞</span></div>
+            </div>
+            
+            <div class="controls">
+                <div>ARROWS: Drive | SPACE: Nitro | Z: Attack | X: Change Weapon</div>
+            </div>
+        </div>
+        
+        <div class="game-menu" id="main-menu">
+            <h1 style="font-size: 48px; margin-bottom: 30px; color: #e74c3c; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">ROAD RAGE</h1>
+            <p style="margin-bottom: 30px; color: #f39c12;">Ultimate Combat Racing Experience</p>
+            <button class="btn" onclick="startGame()">START GAME</button>
+            <button class="btn" onclick="showControls()">CONTROLS</button>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const game = {
+            running: false,
+            score: 0,
+            distance: 0,
+            speed: 0,
+            maxSpeed: 200,
+            health: 100,
+            nitro: 100,
+            weapon: 'fists',
+            ammo: Infinity,
+            enemies: [],
+            obstacles: [],
+            particles: []
+        };
+
+        // Canvas setup
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Player car
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 150,
+            width: 80,
+            height: 40,
+            color: '#e74c3c',
+            speed: 0,
+            acceleration: 0.2,
+            deceleration: 0.1,
+            handling: 5,
+            lastAttack: 0
+        };
+
+        // Road lines
+        const roadLines = [];
+        for (let i = 0; i < 20; i++) {
+            roadLines.push({
+                x: canvas.width / 2 - 2.5,
+                y: i * 100,
+                width: 5,
+                height: 30,
+                speed: 10
+            });
+        }
+
+        // Game functions
+        function startGame() {
+            document.getElementById('main-menu').style.display = 'none';
+            game.running = true;
+            game.score = 0;
+            game.distance = 0;
+            game.health = 100;
+            game.nitro = 100;
+            game.weapon = 'fists';
+            game.ammo = Infinity;
+            game.enemies = [];
+            game.obstacles = [];
+            game.particles = [];
+            
+            player.x = canvas.width / 2;
+            player.speed = 0;
+            
+            updateUI();
+            gameLoop();
+            spawnEnemies();
+            spawnObstacles();
+        }
+
+        function spawnEnemies() {
+            if (!game.running) return;
+            
+            setInterval(() => {
+                if (game.enemies.length < 5) {
+                    game.enemies.push({
+                        x: Math.random() * (canvas.width - 100) + 50,
+                        y: -100,
+                        width: 70,
+                        height: 35,
+                        color: ['#3498db', '#2ecc71', '#9b59b6', '#f1c40f'][Math.floor(Math.random() * 4)],
+                        speed: Math.random() * 3 + 2,
+                        health: 2,
+                        type: Math.random() > 0.5 ? 'racer' : 'attacker'
+                    });
+                }
+            }, 2000);
+        }
+
+        function spawnObstacles() {
+            if (!game.running) return;
+            
+            setInterval(() => {
+                if (game.obstacles.length < 3) {
+                    game.obstacles.push({
+                        x: Math.random() * (canvas.width - 60) + 30,
+                        y: -50,
+                        width: 40,
+                        height: 40,
+                        type: Math.random() > 0.7 ? 'weapon' : 'obstacle',
+                        weapon: Math.random() > 0.5 ? 'bat' : 'gun'
+                    });
+                }
+            }, 3000);
+        }
+
+        function updateGame() {
+            // Update player position
+            player.x = Math.max(player.width/2, Math.min(canvas.width - player.width/2, player.x));
+            
+            // Update road lines
+            roadLines.forEach(line => {
+                line.y += player.speed;
+                if (line.y > canvas.height) {
+                    line.y = -50;
+                }
+            });
+            
+            // Update enemies
+            game.enemies.forEach((enemy, index) => {
+                enemy.y += enemy.speed + player.speed * 0.5;
+                
+                // Check collision
+                if (checkCollision(player, enemy)) {
+                    game.health -= 10;
+                    createExplosion(enemy.x, enemy.y);
+                    game.enemies.splice(index, 1);
+                    updateUI();
+                }
+                
+                // Remove off-screen enemies
+                if (enemy.y > canvas.height + 100) {
+                    game.enemies.splice(index, 1);
+                }
+            });
+            
+            // Update obstacles
+            game.obstacles.forEach((obstacle, index) => {
+                obstacle.y += player.speed;
+                
+                // Check collision
+                if (checkCollision(player, obstacle)) {
+                    if (obstacle.type === 'weapon') {
+                        game.weapon = obstacle.weapon;
+                        game.ammo = obstacle.weapon === 'bat' ? 5 : 10;
+                        createScorePopup(obstacle.x, obstacle.y, 'WEAPON!');
+                    } else {
+                        game.health -= 5;
+                        createExplosion(obstacle.x, obstacle.y);
+                    }
+                    game.obstacles.splice(index, 1);
+                    updateUI();
+                }
+                
+                // Remove off-screen obstacles
+                if (obstacle.y > canvas.height + 100) {
+                    game.obstacles.splice(index, 1);
+                }
+            });
+            
+            // Update particles
+            game.particles.forEach((particle, index) => {
+                particle.y += particle.vy;
+                particle.x += particle.vx;
+                particle.life--;
+                
+                if (particle.life <= 0) {
+                    game.particles.splice(index, 1);
+                }
+            });
+            
+            // Update game stats
+            game.distance += player.speed / 10;
+            game.score = Math.floor(game.distance * 10);
+            
+            // Regenerate nitro
+            if (game.nitro < 100) {
+                game.nitro += 0.1;
+            }
+            
+            // Check game over
+            if (game.health <= 0) {
+                endGame();
+            }
+        }
+
+        function drawGame() {
+            // Clear canvas
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw road
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(canvas.width/2 - 200, 0, 400, canvas.height);
+            
+            // Draw road lines
+            ctx.fillStyle = '#ffffff';
+            roadLines.forEach(line => {
+                ctx.fillRect(line.x, line.y, line.width, line.height);
+            });
+            
+            // Draw player car
+            drawCar(player.x, player.y, player.width, player.height, player.color);
+            
+            // Draw enemies
+            game.enemies.forEach(enemy => {
+                drawCar(enemy.x, enemy.y, enemy.width, enemy.height, enemy.color);
+            });
+            
+            // Draw obstacles
+            game.obstacles.forEach(obstacle => {
+                if (obstacle.type === 'weapon') {
+                    ctx.fillStyle = obstacle.weapon === 'bat' ? '#f39c12' : '#e74c3c';
+                    ctx.fillRect(obstacle.x - obstacle.width/2, obstacle.y - obstacle.height/2, obstacle.width, obstacle.height);
+                } else {
+                    ctx.fillStyle = '#7f8c8d';
+                    ctx.beginPath();
+                    ctx.arc(obstacle.x, obstacle.y, obstacle.width/2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            
+            // Draw particles
+            game.particles.forEach(particle => {
+                ctx.globalAlpha = particle.life / 60;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+            
+            // Draw speed effects
+            if (player.speed > 100) {
+                ctx.globalAlpha = (player.speed - 100) / 100 * 0.3;
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function drawCar(x, y, width, height, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x - width/2, y - height/2, width, height);
+            
+            // Car details
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x - width/2 + 5, y - height/2 + 5, 15, 10); // Window
+            ctx.fillRect(x + width/2 - 20, y - height/2 + 5, 15, 10); // Window
+            
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(x - width/2 + 5, y + height/2 - 15, 20, 10); // Wheel
+            ctx.fillRect(x + width/2 - 25, y + height/2 - 15, 20, 10); // Wheel
+        }
+
+        function checkCollision(obj1, obj2) {
+            return Math.abs(obj1.x - obj2.x) < (obj1.width + obj2.width) / 2 &&
+                   Math.abs(obj1.y - obj2.y) < (obj1.height + obj2.height) / 2;
+        }
+
+        function createExplosion(x, y) {
+            for (let i = 0; i < 20; i++) {
+                game.particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    color: ['#ff0000', '#ff9900', '#ffff00'][Math.floor(Math.random() * 3)],
+                    size: Math.random() * 5 + 2,
+                    life: 60
+                });
+            }
+        }
+
+        function createScorePopup(x, y, text) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = text;
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            document.body.appendChild(popup);
+            
+            setTimeout(() => {
+                popup.remove();
+            }, 100
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>

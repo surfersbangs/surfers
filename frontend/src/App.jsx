@@ -14,7 +14,6 @@ import "highlight.js/styles/github-dark-dimmed.css";
 
 /**********************
  * ERROR BOUNDARY
- * Prevent a blank screen by catching render/runtime errors
  **********************/
 import React from "react";
 class ErrorBoundary extends React.Component {
@@ -113,13 +112,13 @@ const Spinner = ({ className = "h-4 w-4" }) => (
 );
 
 /**********************
- * Modal + tiny button (for code / view / go live)
+ * Modal
  **********************/
-const Modal = ({ open, onClose, title, children }) => {
+const Modal = ({ open, onClose, title, rightEl, children }) => {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80">
-      <div className="relative w-[min(960px,92vw)] h-[min(80vh,720px)] rounded-2xl border border-[#2A2A2A] bg-[#0B0B0C] p-4">
+      <div className="relative w-[min(980px,94vw)] h-[min(82vh,760px)] rounded-2xl border border-[#2A2A2A] bg-[#0B0B0C] p-4">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 h-8 w-8 rounded-full bg-[#121214] text-[#EDEDED] hover:bg-[#1A1A1B]"
@@ -127,7 +126,10 @@ const Modal = ({ open, onClose, title, children }) => {
         >
           ×
         </button>
-        {title && <h3 className="text-lg mb-3 text-[#EDEDED]">{title}</h3>}
+        <div className="flex items-center justify-between mb-3">
+          {title && <h3 className="text-lg text-[#EDEDED]">{title}</h3>}
+          {rightEl || null}
+        </div>
         <div className="w-full h-[calc(100%-40px)] overflow-hidden rounded-xl border border-[#2A2A2A] bg-[#111214]">
           {children}
         </div>
@@ -137,7 +139,7 @@ const Modal = ({ open, onClose, title, children }) => {
 };
 
 /**********************
- * Markdown with code highlight (safe)
+ * Markdown with safe code highlight
  **********************/
 function CodeBlock({ inline, className, children, ...props }) {
   const codeRef = useRef(null);
@@ -225,12 +227,167 @@ function Markdown({ children }) {
 }
 
 /**********************
- * Streaming tuning constants
+ * STREAM CONSTANTS
  **********************/
-// Abort only when the stream is silent for this long
-const STREAM_INACTIVITY_MS = 25000; // 25s of no data
-// Optional: a hard cap for super-long generations (set 0 to disable)
-const STREAM_MAX_DURATION_MS = 180000; // 3 minutes
+const STREAM_INACTIVITY_MS = 25000;
+const STREAM_MAX_DURATION_MS = 180000;
+
+/**********************
+ * CODE PARSERS (robust)
+ * - Handles fenced ``` blocks
+ * - Handles un-fenced "html/css/js" headings
+ * - Grabs raw <!DOCTYPE> / <html> fragments
+ * - Assembles full HTML when needed
+ **********************/
+const FENCE_RE = /```(\w+)?\n([\s\S]*?)```/;
+const INLINE_LANG_LINE_RE = /^\s*(html?|css|js|javascript|typescript)\s*:?\s*$/i;
+
+function extractFenced(text) {
+  const m = text.match(FENCE_RE);
+  if (!m) return null;
+  const lang = (m[1] || "").toLowerCase();
+  const code = m[2] || "";
+  return { lang, code, reason: "fenced" };
+}
+
+function findHtmlFragment(text) {
+  const idx = text.search(/<!DOCTYPE\s+html>|<html[\s>]/i);
+  if (idx === -1) return null;
+  // try to cut at </html> if present, otherwise take tail
+  const endIdxMatch = text.slice(idx).search(/<\/html>/i);
+  const endIdx = endIdxMatch === -1 ? text.length : idx + endIdxMatch + "</html>".length;
+  const frag = text.slice(idx, endIdx);
+  return frag.trim() ? { lang: "html", code: frag, reason: "html-fragment" } : null;
+}
+
+function splitByHeadings(text) {
+  const lines = text.split(/\r?\n/);
+  const sections = {};
+  let current = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (INLINE_LANG_LINE_RE.test(line)) {
+      current = line.trim().replace(/:$/,"").toLowerCase();
+      if (current === "javascript") current = "js";
+      if (current === "htm") current = "html";
+      sections[current] = [];
+      continue;
+    }
+    if (!current) continue;
+    sections[current].push(line);
+  }
+  // compact
+  const out = {};
+  Object.keys(sections).forEach(k => {
+    const v = sections[k].join("\n").trim();
+    if (v) out[k] = v;
+  });
+  return out;
+}
+
+function assembleHtml({ html, css, js }) {
+  // If no HTML but we have CSS or JS, scaffold it
+  if (!html) {
+    if (js && !css) {
+      return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>App</title></head>
+<body><script>
+${js}
+</script></body></html>`;
+    }
+    if (css && !js) {
+      return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>App</title><style>
+${css}
+</style></head>
+<body></body></html>`;
+    }
+    if (css && js) {
+      return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>App</title><style>
+${css}
+</style></head>
+<body><script>
+${js}
+</script></body></html>`;
+    }
+    // Nothing? return blank doc
+    return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body></body></html>";
+  }
+
+  let result = html;
+
+  // Inject CSS if not already in HTML
+  if (css) {
+    if (/<style[\s>]/i.test(result)) {
+      // append another style block in head or before </head>
+      result = result.replace(/<\/head>/i, `<style>\n${css}\n</style>\n</head>`);
+    } else if (/<head[\s>]/i.test(result)) {
+      result = result.replace(/<\/head>/i, `<style>\n${css}\n</style>\n</head>`);
+    } else {
+      // create head
+      result = result.replace(/<html[^>]*>/i, `$&\n<head><style>\n${css}\n</style></head>`);
+    }
+  }
+
+  // Inject JS if not already in HTML
+  if (js) {
+    if (/<script[\s>]/i.test(result)) {
+      // append another script before </body> if possible
+      if (/<\/body>/i.test(result)) {
+        result = result.replace(/<\/body>/i, `<script>\n${js}\n</script>\n</body>`);
+      } else {
+        result += `\n<script>\n${js}\n</script>`;
+      }
+    } else if (/<\/body>/i.test(result)) {
+      result = result.replace(/<\/body>/i, `<script>\n${js}\n</script>\n</body>`);
+    } else {
+      result += `\n<script>\n${js}\n</script>`;
+    }
+  }
+
+  return result;
+}
+
+function parseGeneratedCode(fullText) {
+  // 1) Try fenced block first
+  const fenced = extractFenced(fullText);
+  if (fenced?.code?.trim()) {
+    return { lang: fenced.lang || "html", code: fenced.code, source: "fenced" };
+  }
+
+  // 2) Try raw HTML fragment
+  const htmlFrag = findHtmlFragment(fullText);
+  if (htmlFrag?.code?.trim()) {
+    return { lang: "html", code: htmlFrag.code, source: "html-fragment" };
+  }
+
+  // 3) Try "html/css/js" headings (unfenced)
+  const sections = splitByHeadings(fullText);
+  if (sections.html || sections.css || sections.js) {
+    const merged = assembleHtml({
+      html: sections.html,
+      css: sections.css,
+      js: sections.js || sections.javascript || sections.ts || sections.typescript
+    });
+    return { lang: "html", code: merged, source: "headings-merge" };
+  }
+
+  // 4) Fallback: if it looks like HTML anywhere, grab from first tag-y line
+  const maybeTagIdx = fullText.search(/<(!DOCTYPE|html|head|body|canvas|div|section|main|script|style)\b/i);
+  if (maybeTagIdx !== -1) {
+    const tail = fullText.slice(maybeTagIdx).trim();
+    return { lang: "html", code: tail, source: "html-tail" };
+  }
+
+  // 5) Last fallback: treat everything as JS inside a scaffold
+  const js = fullText.trim();
+  const html = assembleHtml({ js });
+  return { lang: "html", code: html, source: "fallback-js-scaffold" };
+}
 
 /**********************
  * MAIN APP
@@ -245,7 +402,7 @@ function SurfersApp() {
   const [code, setCode] = useState("");
 
   // attachments (home)
-  const [images, setImages] = useState([]);   // {file, url, name}
+  const [images, setImages] = useState([]);
   const [figmas, setFigmas] = useState([]);
   const [showAttach, setShowAttach] = useState(false);
 
@@ -263,15 +420,14 @@ function SurfersApp() {
   const [messages, setMessages] = useState([]); // {id, role, content}
   const [chatInput, setChatInput] = useState("");
 
-  // streaming control (kept for future Stop button)
+  // streaming control
   const [isStreaming, setIsStreaming] = useState(false);
-  const [phase, setPhase] = useState(null); // 'connecting' | 'thinking' | 'generating' | 'coding' | null
-  const atBottomRef = useRef(true);          // live flag: are we near the bottom?
-  const [showJump, setShowJump] = useState(false); // show "jump to latest" button (future)
+  const [phase, setPhase] = useState(null);
+  const atBottomRef = useRef(true);
+  const [showJump, setShowJump] = useState(false);
 
-  const streamAbortRef = useRef(null);   // holds AbortController for the active stream
-  const interruptedRef = useRef(false);  // prevents double-abort spam on keypress
-  // ---- Smooth streaming buffer (prevents re-render on every token) ----
+  const streamAbortRef = useRef(null);
+  const interruptedRef = useRef(false);
   const streamBufRef = useRef({ buf: "", t: null });
 
   const flushNow = (asstId) => {
@@ -279,20 +435,18 @@ function SurfersApp() {
     appendToAssistant(asstId, streamBufRef.current.buf);
     streamBufRef.current.buf = "";
   };
-
   const scheduleFlush = (asstId) => {
     if (streamBufRef.current.t) return;
-    // ~30fps flush cadence
     streamBufRef.current.t = setTimeout(() => {
       streamBufRef.current.t = null;
       flushNow(asstId);
     }, 33);
   };
 
-  const prevUidRef = useRef(null); // Track which user the UI state belongs to
+  const prevUidRef = useRef(null);
 
   // chat attachments
-  const [chatImages, setChatImages] = useState([]); // {file, url, name}
+  const [chatImages, setChatImages] = useState([]);
   const [chatFigmas, setChatFigmas] = useState([]);
   const [showChatAttach, setShowChatAttach] = useState(false);
 
@@ -304,6 +458,12 @@ function SurfersApp() {
 
   // action modals
   const [modal, setModal] = useState({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+
+  // ===== preview + publish state =====
+  const [previews, setPreviews] = useState({});
+  const [published, setPublished] = useState({});
+  const [previewStatus, setPreviewStatus] = useState("idle"); // idle | building | ready | error
+
   const previewUrlRef = useRef(null);
 
   // refs (home)
@@ -320,6 +480,15 @@ function SurfersApp() {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
+  // Normalize preview/publish URLs to API origin (fixes "my app inside preview")
+  const makeAbsoluteUrl = (u) => {
+    try {
+      return new URL(u, API_URL).toString();
+    } catch {
+      return u;
+    }
+  };
+
   const LINE_HEIGHT_PX = 20;
   const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
@@ -333,15 +502,13 @@ function SurfersApp() {
   const [blink, setBlink] = useState(true);
   const typewriter = TW_PREFIX + TW_LIST[twIdx].slice(0, twSub) + (blink ? " |" : "  ");
 
-  // caret blink
   useEffect(() => {
     const t = setInterval(() => setBlink((b) => !b), 500);
     return () => clearInterval(t);
   }, []);
 
-  // typing/deleting loop (paused when user has typed something)
   useEffect(() => {
-    if (prompt) return; // pause when user is typing
+    if (prompt) return;
     const full = TW_LIST[twIdx];
     const typingDelay = 150;
     const deletingDelay = 25;
@@ -368,7 +535,6 @@ function SurfersApp() {
     return () => clearTimeout(timer);
   }, [prompt, twIdx, twSub, twDeleting]);
 
-  // observe bottom visibility (for a future "jump to latest")
   useEffect(() => {
     if (!chatEndRef.current) return;
     const observer = new IntersectionObserver(
@@ -383,7 +549,6 @@ function SurfersApp() {
     return () => observer.disconnect();
   }, []);
 
-  // auth changes → clear cross-account state
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (currentUser) => {
       const newUid = currentUser?.uid || null;
@@ -397,7 +562,6 @@ function SurfersApp() {
     return () => unsub();
   }, []);
 
-  // after login, auto-send pending
   useEffect(() => {
     if (user && pendingPrompt) {
       const toSend = pendingPrompt;
@@ -415,15 +579,19 @@ function SurfersApp() {
     }
   }, [user, pendingPrompt, pendingImages]);
 
-  // cleanup on unmount
   useEffect(() => () => stopStreaming(), []);
+  useEffect(() => { if (view === "home") stopStreaming(); }, [view]);
 
-  // stop streaming when leaving chat
   useEffect(() => {
-    if (view === "home") {
-      stopStreaming();
-    }
-  }, [view]);
+    const onMsg = (e) => {
+      const d = e?.data;
+      if (!d || typeof d !== "object") return;
+      if (d.type === "surfers:ready") setPreviewStatus("ready");
+      if (d.type === "surfers:error") setPreviewStatus("error");
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
 
   const resetPhoneAuth = () => {
     setPhone(""); setOtp(""); setOtpSent(false); setConfirmation(null);
@@ -467,7 +635,8 @@ function SurfersApp() {
   };
 
   const resizeTextarea = () => {
-    const el = textareaRef.current; if (!el) return;
+    const el = textareaRef.current;
+    if (!el) return;
     el.style.height = "auto";
     const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
     el.style.height = next + "px";
@@ -484,7 +653,6 @@ function SurfersApp() {
   };
   useEffect(() => { resizeChatTextarea(); }, [chatInput]);
 
-  // type anywhere to focus active input
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName || "")) return;
@@ -496,10 +664,8 @@ function SurfersApp() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view]);
 
-  // auto focus chat box when entering chat view
   useEffect(() => { if (view === "chat") chatTextareaRef.current?.focus(); }, [view]);
 
-  // popover toggles
   useEffect(() => {
     if (!showAttach) return;
     const onClick = (e) => { if (attachRef.current && !attachRef.current.contains(e.target)) setShowAttach(false); };
@@ -517,7 +683,6 @@ function SurfersApp() {
     return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
   }, [showChatAttach]);
 
-  // file pickers
   const onAddImageClick = () => { fileInputRef.current?.click(); setShowAttach(false); };
   const onFilesPicked = (e) => {
     const files = Array.from(e.target.files || []);
@@ -552,7 +717,6 @@ function SurfersApp() {
   const removeChatImage = (i) => setChatImages((prev) => prev.filter((_, idx) => idx !== i));
   const removeChatFigma = (i) => setChatFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
-  // helpers
   const addAssistantPlaceholder = () => {
     const id = Date.now() + Math.random();
     setMessages((prev) => [...prev, { id, role: "assistant", content: "", streaming: true }]);
@@ -560,7 +724,15 @@ function SurfersApp() {
   };
 
   const appendToAssistant = (id, chunk) => {
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content: (m.content || "") + (chunk || "") } : m)));
+    setMessages(prev => prev.map(m =>
+      m.id === id
+        ? {
+            ...m,
+            content: (m.content || "") + (chunk || ""),
+            className: "transition-all duration-200"
+          }
+        : m
+    ));
   };
   const scrollMessageToTop = (msgId) => {
     requestAnimationFrame(() => {
@@ -577,7 +749,6 @@ function SurfersApp() {
     setPhase(null);
   };
 
-  // wipe all UI/chat state
   const clearConversationState = () => {
     stopStreaming();
     setMessages([]);
@@ -590,9 +761,11 @@ function SurfersApp() {
     setCode("");
     setIsStreaming(false);
     setPhase(null);
+    setPreviews({});
+    setPublished({});
   };
 
-  // non-stream fallback (HOME only)
+  // Non-stream fallback (rare)
   async function sendMessage(text) {
     const id = Date.now();
     setMessages((prev) => [...prev, { id, role: "user", content: text }]);
@@ -612,17 +785,17 @@ function SurfersApp() {
     }
   }
 
-  // STREAMING via fetch + FormData (supports images) — idle-based timeout
+  // STREAMING via fetch + FormData
   async function sendMessageStream(text, attachments = []) {
     const userId = Date.now();
     setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
     const asstId = addAssistantPlaceholder();
     setPhase("connecting");
-    // reset streaming buffer for this message
     streamBufRef.current.buf = "";
-    if (streamBufRef.current.t) 
-    { clearTimeout(streamBufRef.current.t); 
-      streamBufRef.current.t = null; }
+    if (streamBufRef.current.t) {
+      clearTimeout(streamBufRef.current.t);
+      streamBufRef.current.t = null;
+    }
 
     scrollMessageToTop(userId);
 
@@ -638,7 +811,6 @@ function SurfersApp() {
     streamAbortRef.current = ac;
     interruptedRef.current = false;
 
-    // timers — reset on every chunk
     let idleTimer = null;
     let hardCapTimer = null;
     const armTimers = () => {
@@ -666,48 +838,29 @@ function SurfersApp() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let leftover = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunkStr = decoder.decode(value, { stream: true });
-        let data = leftover + chunkStr;
-        leftover = "";
-
-        const doneIdx = data.indexOf("[DONE]");
-        if (doneIdx !== -1) {
-          const before = data.slice(0, doneIdx);
-          if (before) {
-            // buffer the final chunk BEFORE [DONE]
-            streamBufRef.current.buf += before;   // <-- use `before` here
-            scheduleFlush(asstId);
-            if (/\S/.test(before)) gotAny = true;
-          }
-
-          // force one last flush at the end of the stream
-          flushNow(asstId);
-          break;
-        }
-
-        if (data) {
-          // buffer regular streaming chunks
-          streamBufRef.current.buf += data;       // <-- use `data` here
+        if (chunkStr) {
+          streamBufRef.current.buf += chunkStr;
           scheduleFlush(asstId);
-          if (/\S/.test(data)) gotAny = true;
+          if (/\S/.test(chunkStr)) gotAny = true;
 
-          // phase hints
-          if (/```|\b(import|class|def|function|const|let|var)\b/.test(data)) {
+          if (/```|\b(import|class|def|function|const|let|var)\b/.test(chunkStr)) {
             setPhase("coding");
           } else if (!gotAny) {
             setPhase("generating");
           }
         }
 
-        // reset idle timer on every chunk
         armTimers();
       }
+
+      // Ensure the very last buffered chunk is flushed even if no [DONE]
+      flushNow(asstId);
     } catch (err) {
       const msg = String(err?.name || err || "");
       const reason = (err && "message" in err) ? String(err.message) : msg;
@@ -725,10 +878,9 @@ function SurfersApp() {
     }
   }
 
-  // HOME SUBMIT — clear input BEFORE sending
+  // HOME SUBMIT
   async function onSubmit(e) {
     e.preventDefault();
-    // Optional: when user sends a new message, cancel the previous stream
     if (isStreaming) stopStreaming("new-message");
 
     if (!prompt.trim() && images.length === 0) return;
@@ -752,7 +904,7 @@ function SurfersApp() {
     setTimeout(() => sendMessageStream(first, imgs), 0);
   }
 
-  // CHAT SEND — clear input BEFORE sending
+  // CHAT SEND
   const sendFromChat = (e) => {
     e.preventDefault();
     if (isStreaming) stopStreaming("new-message");
@@ -780,56 +932,147 @@ function SurfersApp() {
   // ===== helpers for “code / view / go live” =====
   const getMsgById = (id) => messages.find((m) => m.id === id);
 
-  // first fenced code block extractor
+  // Original fenced-only helper (kept if needed elsewhere)
   const extractFirstCodeBlock = (text) => {
-    const m = (text || "").match(/```(\w+)?\n([\s\S]*?)```/);
+    const m = (text || "").match(FENCE_RE);
     if (!m) return { lang: "", code: "" };
     return { lang: (m[1] || "").toLowerCase(), code: m[2] || "" };
   };
 
-  // hide fenced code blocks from chat bubble
-  const stripFencedCodeBlocks = (text) => (text || "").replace(/```[\s\S]*?```/g, "");
+  // Build/Preview pipeline (now robust against unfenced replies)
+  async function buildOrUpdatePreview(msgId) {
+    const msg = getMsgById(msgId);
+    const fullText = msg?.content || "";
+    const parsed = parseGeneratedCode(fullText);
+    if (!parsed.code || !parsed.code.trim()) {
+      setModal((m) => ({ ...m, note: "No usable code found in this message." }));
+      return;
+    }
+    setPreviewStatus("building");
+
+    const existing = previews[msgId];
+    const payload = {
+      code: parsed.code,
+      lang: parsed.lang || "html",
+      artifactId: existing?.artifactId || null,
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/api/preview/build`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        setPreviewStatus("error");
+        const txt = await res.text().catch(() => "");
+        setModal((m) => ({ ...m, note: `build failed: ${txt || res.status}` }));
+        return;
+      }
+      const data = await res.json();
+      const absUrl = makeAbsoluteUrl(data.previewUrl);
+      const next = {
+        artifactId: data.artifactId,
+        url: absUrl,
+      };
+      setPreviews((p) => ({ ...p, [msgId]: next }));
+
+      const src = `${next.url}${next.url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+      setModal((m) => ({ ...m, url: src, note: "" }));
+    } catch (err) {
+      setPreviewStatus("error");
+      setModal((m) => ({ ...m, note: `build failed: ${String(err)}` }));
+    }
+  }
 
   const openCodeModal = (id) => {
     const msg = getMsgById(id);
-    const { lang, code } = extractFirstCodeBlock(msg?.content || "");
-    setModal({ type: "code", msgId: id, code, lang, url: "", note: code ? "" : "No fenced code block found in this message." });
-  };
-
-  const openViewModal = (id) => {
-    const msg = getMsgById(id);
-    const { lang, code } = extractFirstCodeBlock(msg?.content || "");
-    let url = "", note = "";
-    if (lang === "html" && code) {
-      const blob = new Blob([code], { type: "text/html" });
-      url = URL.createObjectURL(blob);
-      if (previewUrlRef.current) try { URL.revokeObjectURL(previewUrlRef.current); } catch {}
-      previewUrlRef.current = url;
-    } else {
-      note = "Preview requires an HTML code block. Open Code to copy/run elsewhere.";
-    }
-    setModal({ type: "view", msgId: id, code, lang, url, note });
-  };
-
-  const openLiveModal = (id) => {
-    const msg = getMsgById(id);
-    const { lang, code } = extractFirstCodeBlock(msg?.content || "");
+    const fullText = msg?.content || "";
+    const parsed = parseGeneratedCode(fullText);
     setModal({
-      type: "live",
+      type: "code",
       msgId: id,
-      code,
-      lang,
+      code: parsed.code || "",
+      lang: parsed.lang || "html",
       url: "",
-      note: "Deploy flow coming soon. Export your code and deploy to Vercel/Netlify."
+      note: parsed.code ? "" : "No usable code found in this message.",
     });
   };
 
-  const closeModal = () => {
-    if (modal.url && modal.url.startsWith("blob:")) {
-      try { URL.revokeObjectURL(modal.url); } catch {}
-    }
-    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+  const openViewModal = async (id) => {
+    const msg = getMsgById(id);
+    const fullText = msg?.content || "";
+    const parsed = parseGeneratedCode(fullText);
+    setModal({ type: "view", msgId: id, code: parsed.code || "", lang: parsed.lang || "html", url: "", note: "" });
+    await buildOrUpdatePreview(id);
   };
+
+  const openLiveModal = async (id) => {
+    const prev = previews[id];
+    if (!prev?.artifactId) {
+      alert("Preview not built yet. Building now…");
+      await openViewModal(id);
+      return;
+    }
+    const defaultSlugBase = (user?.uid || "anon").slice(0, 6);
+    const defaultSlug = `proj-${defaultSlugBase}-${String(id).slice(-4)}`;
+    const input = window.prompt("project slug for live URL (letters, numbers, dashes):", defaultSlug);
+    if (!input) return;
+
+    const slug = input.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    if (!slug) {
+      alert("Invalid slug.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: slug, artifactId: prev.artifactId }),
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        setModal({
+          type: "live",
+          msgId: id,
+          code: "",
+          lang: "",
+          url: "",
+          note: `Publish failed: ${t || res.status}`,
+        });
+        return;
+      }
+      const data = await res.json(); // { liveUrl, project, artifactId }
+      const liveAbs = makeAbsoluteUrl(data.liveUrl);
+      setPublished((p) => ({ ...p, [data.project]: data.artifactId }));
+      setModal({
+        type: "live",
+        msgId: id,
+        code: "",
+        lang: "",
+        url: liveAbs,
+        note: "Live! Share this URL. Re-run publish with the same slug to update.",
+      });
+    } catch (err) {
+      setModal({
+        type: "live",
+        msgId: id,
+        code: "",
+        lang: "",
+        url: "",
+        note: `Publish failed: ${String(err)}`,
+      });
+    }
+  };
+
+  const closeModal = () => {
+    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+    setPreviewStatus("idle");
+  };
+
+  // Hide fenced code blocks from the chat bubble (we keep the original in state)
+  const stripFencedCodeBlocks = (text) => (text || "").replace(/```[\s\S]*?```/g, "");
 
   return (
     <div className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col">
@@ -955,7 +1198,6 @@ function SurfersApp() {
                 const isAssistant = m.role === "assistant";
                 const hasContent = (m.content ?? "").trim() !== "";
 
-                // hide code from chat bubble
                 const cleaned = isAssistant ? stripFencedCodeBlocks(m.content || "") : (m.content || "");
                 const textToShow = (cleaned || "").trim() || (isAssistant ? "_generated code ready — use the buttons below._" : "");
 
@@ -970,7 +1212,6 @@ function SurfersApp() {
                           <>
                             <Markdown>{textToShow}</Markdown>
 
-                            {/* action bar (only after stream ends) */}
                             {!isStreaming && (
                               <div className="mt-3 flex flex-wrap items-center gap-3">
                                 <button
@@ -1081,7 +1322,11 @@ function SurfersApp() {
           </div>
 
           {/* ===== ACTION MODALS ===== */}
-          <Modal open={modal.type === "code"} onClose={closeModal} title="Code">
+          <Modal
+            open={modal.type === "code"}
+            onClose={closeModal}
+            title="Code"
+          >
             <div className="w-full h-full overflow-auto p-3">
               {modal.code
                 ? <Markdown>{` \`\`\`${modal.lang || ""}\n${modal.code}\n\`\`\` `}</Markdown>
@@ -1090,31 +1335,61 @@ function SurfersApp() {
             </div>
           </Modal>
 
-          <Modal open={modal.type === "view"} onClose={closeModal} title="Preview">
+          <Modal
+            open={modal.type === "view"}
+            onClose={closeModal}
+            title="Preview"
+            rightEl={
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${previewStatus === "ready" ? "border-green-700 text-green-400" : previewStatus === "building" ? "border-yellow-700 text-yellow-400" : previewStatus === "error" ? "border-red-700 text-red-400" : "border-[#2A2A2A] text-[#C8CCD2]"}`}>
+                  {previewStatus === "ready" ? "● ready" : previewStatus === "building" ? "● building" : previewStatus === "error" ? "● error" : "● idle"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => buildOrUpdatePreview(modal.msgId)}
+                  className="px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-sm"
+                  title="Rebuild"
+                >
+                  update preview
+                </button>
+              </div>
+            }
+          >
             {modal.url
-              ? <iframe src={modal.url} className="w-full h-full" />
-              : <div className="p-4 text-[#c7cbd2]">{modal.note}</div>
+              ? (
+                <iframe
+                  key={modal.url}
+                  src={modal.url}
+                  className="w-full h-full"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+                  allow="accelerometer; camera; microphone; clipboard-read; clipboard-write; geolocation; gyroscope; payment; fullscreen"
+                  referrerPolicy="no-referrer"
+                  onLoad={() => setPreviewStatus("ready")}
+                  onError={() => setPreviewStatus("error")}
+                />
+              )
+              : <div className="p-4 text-[#c7cbd2]">{modal.note || "building preview…"}</div>
             }
           </Modal>
 
           <Modal open={modal.type === "live"} onClose={closeModal} title="Go live">
             <div className="w-full h-full overflow-auto p-4 text-[#EDEDED]">
-              <p>{modal.note}</p>
-              {modal.code && (
-                <>
-                  <p className="mt-4 mb-2 text-sm text-[#c7cbd2]">quick copy:</p>
-                  <pre className="mb-0 rounded-[12px] bg-[#0f0f10] border border-[#2A2A2A] overflow-x-auto p-3 text-xs">
-                    {modal.code}
-                  </pre>
-                  <button
-                    type="button"
-                    onClick={() => navigator.clipboard?.writeText(modal.code)}
-                    className="mt-3 px-4 py-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325]"
-                  >
-                    copy code
-                  </button>
-                </>
-              )}
+              <p className="mb-3">{modal.note}</p>
+              {modal.url ? (
+                <div className="rounded-lg border border-[#2A2A2A] bg-[#0f0f10] p-3">
+                  <p className="text-sm mb-2">public URL:</p>
+                  <a href={modal.url} target="_blank" rel="noreferrer" className="underline decoration-[#4b9fff] break-all">{modal.url}</a>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(modal.url)}
+                      className="px-4 py-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325]"
+                    >
+                      copy link
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </Modal>
         </>
@@ -1171,7 +1446,7 @@ function SurfersApp() {
             <div id="recaptcha-container"></div>
 
             <p className="text-gray-400 text-xs mt-6">
-              privacy policy • terms &amp; use • type it. see it.<br />
+              privacy policy • terms &amp; use • type it.<br />
               your ideas live in seconds. surfers codes anything better. faster.<br />
               © 2025 surfers
             </p>

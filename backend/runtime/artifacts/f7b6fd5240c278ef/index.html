@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alien Shooter</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #0a0a2a;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            overflow: hidden;
+            cursor: none;
+        }
+        
+        .game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: #1a1a3a;
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .alien {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            background: linear-gradient(45deg, #ff4444, #ff8844);
+            border-radius: 50% 50% 40% 40%;
+            transition: transform 0.2s;
+        }
+        
+        .alien:before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 15px;
+            width: 10px;
+            height: 10px;
+            background: black;
+            border-radius: 50%;
+        }
+        
+        .alien:after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: 15px;
+            width: 10px;
+            height: 10px;
+            background: black;
+            border-radius: 50%;
+        }
+        
+        .crosshair {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: rgba(0, 255, 136, 0.8);
+            border: 2px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            transform: translate(-50%, -50%);
+        }
+        
+        .laser {
+            position: absolute;
+            background: #00ff88;
+            height: 2px;
+            transform-origin: 0 0;
+            z-index: 999;
+        }
+        
+        button {
+            background: #00ff88;
+            color: #0a0a2a;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #00cc66;
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+            z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>👽 Alien Shooter 👽</h1>
+        
+        <div class="stats">
+            <div>Score: <span id="score">0</span></div>
+            <div>Time: <span id="time">60</span>s</div>
+        </div>
+        
+        <div id="game-area">
+            <div class="crosshair" id="crosshair"></div>
+        </div>
+        
+        <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <script>
+        let score = 0;
+        let timeLeft = 60;
+        let gameInterval;
+        let alienInterval;
+        let gameActive = false;
+        
+        // Crosshair movement
+        document.addEventListener('mousemove', (e) => {
+            const crosshair = document.getElementById('crosshair');
+            crosshair.style.left = e.clientX + 'px';
+            crosshair.style.top = e.clientY + 'px';
+        });
+        
+        // Shooting
+        document.addEventListener('click', (e) => {
+            if (!gameActive) return;
+            
+            createLaser(e.clientX, e.clientY);
+            checkHit(e.clientX, e.clientY);
+        });
+        
+        function startGame() {
+            if (gameActive) return;
+            
+            gameActive = true;
+            score = 0;
+            timeLeft = 60;
+            document.getElementById('score').textContent = score;
+            document.getElementById('time').textContent = timeLeft;
+            
+            // Clear any existing aliens and game over screen
+            const gameArea = document.getElementById('game-area');
+            const gameOver = document.querySelector('.game-over');
+            if (gameOver) gameOver.remove();
+            
+            gameArea.querySelectorAll('.alien').forEach(alien => alien.remove());
+            
+            // Start timers
+            gameInterval = setInterval(updateTimer, 1000);
+            alienInterval = setInterval(createAlien, 1500);
+            
+            createAlien(); // Create first alien immediately
+        }
+        
+        function updateTimer() {
+            timeLeft--;
+            document.getElementById('time').textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+        
+        function createAlien() {
+            if (!gameActive) return;
+            
+            const alien = document.createElement('div');
+            alien.className = 'alien';
+            
+            // Random position
+            const gameArea = document.getElementById('game-area');
+            const maxX = gameArea.offsetWidth - 60;
+            const maxY = gameArea.offsetHeight - 80;
+            
+            alien.style.left = Math.random() * maxX + 'px';
+            alien.style.top = Math.random() * maxY + 'px';
+            
+            // Remove alien after 3 seconds
+            setTimeout(() => {
+                if (alien.parentNode) {
+                    alien.remove();
+                }
+            }, 3000);
+            
+            gameArea.appendChild(alien);
+        }
+        
+        function createLaser(x, y) {
+            const laser = document.createElement('div');
+            laser.className = 'laser';
+            laser.style.left = x + 'px';
+            laser.style.top = y + 'px';
+            laser.style.width = '0px';
+            
+            document.getElementById('game-area').appendChild(laser);
+            
+            // Animate laser
+            setTimeout(() => {
+                laser.style.width = '200px';
+                laser.style.opacity = '0.8';
+            }, 10);
+            
+            setTimeout(() => {
+                if (laser.parentNode) {
+                    laser.remove();
+                }
+            }, 200);
+        }
+        
+        function checkHit(x, y) {
+            const aliens = document.querySelectorAll('.alien');
+            
+            aliens.forEach(alien => {
+                const rect = alien.getBoundingClientRect();
+                const alienX = rect.left + rect.width / 2;
+                const alienY = rect.top + rect.height / 2;
+                
+                // Calculate distance between click and alien center
+                const distance = Math.sqrt(Math.pow(x - alienX, 2) + Math.pow(y - alienY, 2));
+                
+                if (distance < 40) { // Hit radius
+                    score++;
+                    document.getElementById('score').textContent = score;
+                    
+                    // Explosion effect
+                    alien.style.background = '#ff0000';
+                    alien.style.transform = 'scale(1.5)';
+                    alien.style.opacity = '0.7';
+                    
+                    setTimeout(() => {
+                        if (alien.parentNode) {
+                            alien.remove();
+                        }
+                    }, 100);
+                }
+            });
+        }
+        
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameInterval);
+            clearInterval(alienInterval);
+            
+            // Create game over screen
+            const gameOver = document.createElement('div');
+            gameOver.className = 'game-over';
+            gameOver.innerHTML = `
+                <h2>Game Over!</h2>
+                <p>Final Score: ${score}</p>
+                <button onclick="startGame()">Play Again</button>
+            `;
+            
+            document.getElementById('game-area').appendChild(gameOver);
+            
+            // Clear aliens
+            document.querySelectorAll('.alien').forEach(alien => alien.remove());
+        }
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

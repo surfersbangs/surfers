@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Racer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        
+        #game-canvas {
+            background-color: #0f3460;
+            border: 4px solid #e94560;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+        }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .ui-element {
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid #e94560;
+        }
+        
+        #start-screen, #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(15, 52, 96, 0.9);
+            z-index: 10;
+        }
+        
+        #game-over {
+            display: none;
+        }
+        
+        button {
+            background-color: #e94560;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        button:hover {
+            background-color: #ff6b81;
+            transform: scale(1.05);
+        }
+        
+        h1 {
+            font-size: 48px;
+            color: #e94560;
+            text-shadow: 3px 3px 0 #000;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+        
+        .instructions {
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            max-width: 80%;
+        }
+        
+        .key {
+            display: inline-block;
+            background-color: #333;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        
+        <div id="ui-container">
+            <div class="ui-element">
+                <div>Score: <span id="score">0</span></div>
+            </div>
+            <div class="ui-element">
+                <div>Health: <span id="health">100</span>%</div>
+            </div>
+            <div class="ui-element">
+                <div>Position: <span id="position">1</span>/6</div>
+            </div>
+        </div>
+        
+        <div id="start-screen">
+            <h1>ROAD RACER</h1>
+            <h2>Road Rash Inspired Racing</h2>
+            <div class="instructions">
+                <p>Race against opponents and use combat to stay ahead!</p>
+                <p>Arrow keys to drive - <span class="key">←</span> <span class="key">→</span> to steer, <span class="key">↑</span> to accelerate, <span class="key">↓</span> to brake</p>
+                <p><span class="key">A</span> to attack left - <span class="key">D</span> to attack right</p>
+            </div>
+            <button id="start-button">START RACE</button>
+        </div>
+        
+        <div id="game-over">
+            <h1>RACE OVER</h1>
+            <h2>Final Score: <span id="final-score">0</span></h2>
+            <button id="restart-button">RACE AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const scoreElement = document.getElementById('score');
+        const healthElement = document.getElementById('health');
+        const positionElement = document.getElementById('position');
+        const finalScoreElement = document.getElementById('final-score');
+        
+        let gameRunning = false;
+        let score = 0;
+        let health = 100;
+        let playerPosition = 1;
+        
+        // Road properties
+        const roadWidth = 400;
+        const laneCount = 3;
+        const laneWidth = roadWidth / laneCount;
+        
+        // Player car
+        const playerCar = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            width: 40,
+            height: 70,
+            speed: 0,
+            maxSpeed: 10,
+            acceleration: 0.1,
+            deceleration: 0.05,
+            handling: 5,
+            color: '#e94560',
+            lane: 1
+        };
+        
+        // Opponent cars
+        const opponents = [];
+        const opponentColors = ['#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e74c3c'];
+        
+        // Road markings
+        const roadMarkings = [];
+        for (let i = -20; i < canvas.height; i += 40) {
+            roadMarkings.push(i);
+        }
+        
+        // Key states
+        const keys = {
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false,
+            a: false,
+            d: false
+        };
+        
+        // Initialize game
+        function initGame() {
+            score = 0;
+            health = 100;
+            playerPosition = 1;
+            playerCar.x = canvas.width / 2;
+            playerCar.y = canvas.height - 100;
+            playerCar.speed = 0;
+            playerCar.lane = 1;
+            
+            opponents.length = 0;
+            for (let i = 0; i < 5; i++) {
+                createOpponent(i);
+            }
+            
+            updateUI();
+        }
+        
+        // Create a new opponent car
+        function createOpponent(index) {
+            const lane = Math.floor(Math.random() * laneCount);
+            const laneX = (canvas.width - roadWidth) / 2 + (lane * laneWidth) + laneWidth / 2;
+            
+            opponents.push({
+                x: laneX,
+                y: -100 - (index * 150),
+                width: 40,
+                height: 70,
+                speed: 3 + Math.random() * 2,
+                color: opponentColors[index % opponentColors.length],
+                lane: lane,
+                health: 100,
+                wobble: Math.random() * 2 - 1
+            });
+        }
+        
+        // Start the game
+        function startGame() {
+            initGame();
+            gameRunning = true;
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            gameLoop();
+        }
+        
+        // End the game
+        function endGame() {
+            gameRunning = false;
+            finalScoreElement.textContent = score;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Update UI elements
+        function updateUI() {
+            scoreElement.textContent = score;
+            healthElement.textContent = health;
+            positionElement.textContent = playerPosition;
+        }
+        
+        // Draw road
+        function drawRoad() {
+            // Road
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect((canvas.width - roadWidth) / 2, 0, roadWidth, canvas.height);
+            
+            // Road markings
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < roadMarkings.length; i++) {
+                const y = (roadMarkings[i] + playerCar.speed * 2) % canvas.height;
+                ctx.fillRect(canvas.width / 2 - 5, y, 10, 20);
+            }
+            
+            // Road edges
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo((canvas.width - roadWidth) / 2, 0);
+            ctx.lineTo((canvas.width - roadWidth) / 2, canvas.height);
+            ctx.moveTo((canvas.width + roadWidth) / 2, 0);
+            ctx.lineTo((canvas.width + roadWidth) / 2, canvas.height);
+            ctx.stroke();
+        }
+        
+        // Draw player car
+        function drawPlayer() {
+            ctx.fillStyle = playerCar.color;
+            ctx.fillRect(playerCar.x - playerCar.width / 2, playerCar.y - playerCar.height / 2, playerCar.width, playerCar.height);
+            
+            // Car details
+            ctx.fillStyle = '#000';
+            ctx.fillRect(playerCar.x - playerCar.width / 2 + 5, playerCar.y - playerCar.height / 2 + 5, 10, 15);
+            ctx.fillRect(playerCar.x + playerCar.width / 2 - 15, playerCar.y - playerCar.height / 2 + 5, 10, 15);
+            ctx.fillRect(playerCar.x - playerCar.width / 2 + 5, playerCar.y + playerCar.height / 2 - 20, 10, 15);
+            ctx.fillRect(playerCar.x + playerCar.width / 2 - 15, playerCar.y + playerCar.height / 2 - 20, 10, 15);
+            
+            // Windshield
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(playerCar.x - 10, playerCar.y - playerCar.height / 2 + 15, 20, 10);
+            
+            // Attack indicators
+            if (keys.a) {
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillRect(playerCar.x - playerCar.width / 2 - 15, playerCar.y - 10, 10, 20);
+            }
+            
+            if (keys.d) {
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillRect(playerCar.x + playerCar.width / 2 + 5, playerCar.y - 10, 10, 20);
+            }
+        }
+        
+        // Draw opponent cars
+        function drawOpponents() {
+            for (let i = 0; i < opponents.length; i++) {
+                const opponent = opponents[i];
+                
+                ctx.fillStyle = opponent.color;
+                ctx.fillRect(opponent.x - opponent.width / 2, opponent.y - opponent.height / 2, opponent.width, opponent.height);
+                
+                // Car details
+                ctx.fillStyle = '#000';
+                ctx.fillRect(opponent.x - opponent.width / 2 + 5, opponent.y - opponent.height / 2 + 5, 10, 15);
+                ctx.fillRect(opponent.x + opponent.width / 2 - 15, opponent.y - opponent.height / 2 + 5, 10, 15);
+                ctx.fillRect(opponent.x - opponent.width / 2 + 5, opponent.y + opponent.height / 2 - 20, 10, 15);
+                ctx.fillRect(opponent.x + opponent.width / 2 - 15, opponent.y + opponent.height / 2 - 20, 10, 15);
+                
+                // Windshield
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(opponent.x - 10, opponent.y - opponent.height / 2 + 15, 20, 10);
+                
+                // Health bar
+                ctx.fillStyle = '#333';
+                ctx.fillRect(opponent.x - 20, opponent.y - opponent.height / 2 - 10, 40, 5);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(opponent.x - 20, opponent.y - opponent.height / 2 - 10, 40 * (opponent.health / 100), 5);
+            }
+        }
+        
+        // Update player position and state
+        function updatePlayer() {
+            // Apply acceleration
+            if (keys.ArrowUp && playerCar.speed < playerCar.maxSpeed) {
+                playerCar.speed += playerCar.acceleration;
+            }
+            
+            // Apply deceleration
+            if (keys.ArrowDown && playerCar.speed > 0) {
+                playerCar.speed -= playerCar.deceleration * 2;
+            }
+            
+            // Natural deceleration
+            if (!keys.ArrowUp && playerCar.speed > 0) {
+                playerCar.speed -= playerCar.deceleration;
+                if (playerCar.speed < 0) playerCar.speed = 0;
+            }
+            
+            // Handle steering
+            if (keys.ArrowLeft) {
+                playerCar.x -= playerCar.handling * (playerCar.speed / playerCar.maxSpeed);
+            }
+            
+            if (keys.ArrowRight) {
+                playerCar.x += playerCar.handling * (playerCar.speed / playerCar.maxSpeed);
+            }
+            
+            // Keep player on road
+            const minX = (canvas.width - roadWidth) / 2 + playerCar.width / 2;
+            const maxX = (canvas.width + roadWidth) / 2 - playerCar.width / 2;
+            
+            if (playerCar.x < minX) playerCar.x = minX;
+            if (playerCar.x > maxX) playerCar.x = maxX;
+            
+            // Update lane
+            playerCar.lane = Math.floor((playerCar.x - (canvas.width - roadWidth) / 2) / laneWidth);
+            if (playerCar.lane < 0) playerCar.lane = 0;
+            if (playerCar.lane >= laneCount) playerCar.lane = laneCount - 1;
+            
+            // Handle attacks
+            if (keys.a) {
+                attackLeft();
+            }
+            
+            if (keys.d) {
+                attackRight();
+            }
+        }
+        
+        // Attack to the left
+        function attackLeft() {
+            for (let i = 0; i < opponents.length; i++) {
+                const opponent = opponents[i];
+                if (
+                    opponent.x < playerCar.x && 
+                    Math.abs(opponent.y - playerCar.y) < 40 &&
+                    Math.abs(opponent.x - playerCar.x) < 60
+                ) {
+                    opponent.health -= 20;
+                    opponent.x -= 10;
+                    opponent.speed -= 1;
+                    
+                    if (opponent.health <= 0) {
+                        score += 100;
+                        opponent.y = -100;
+                        opponent.health = 100;
+                        opponent.speed = 3 + Math.random() * 2;
+                    }
+                    
+                    updateUI();
+                }
+            }
+        }
+        
+        // Attack to the right
+        function attackRight() {
+            for (let i = 0; i < opponents.length; i++) {
+                const opponent = opponents[i];
+                if (
+                    opponent.x > playerCar.x && 
+                    Math.abs(opponent.y - playerCar.y) < 40 &&
+                    Math.abs(opponent.x - playerCar.x) < 60
+                ) {
+                    opponent.health -= 20;
+                    opponent.x += 10;
+                    opponent.speed -= 1;
+                    
+                    if (opponent.health <= 0) {
+                        score += 100;
+                        opponent.y = -100;
+                        opponent.health = 100;
+                        opponent.speed = 3 + Math.random() * 2;
+                    }
+                    
+                    updateUI();
+                }
+            }
+        }
+        
+        // Update opponent positions
+        function updateOpponents() {
+            let carsBehind = 0;
+            
+            for (let i = 0; i < opponents.length; i++) {
+                const opponent = opponents[i];
+                
+                // Move opponent
+                opponent.y += opponent.speed + (playerCar.speed / 2);
+                opponent.x += opponent.wobble;
+                
+                // Keep opponent on road
+                const minX = (canvas.width - roadWidth) / 2 + opponent.width / 2;
+                const maxX = (canvas.width + roadWidth) / 2 - opponent.width / 2;
+                
+                if (opponent.x < minX || opponent.x > maxX) {
+                    opponent.wobble *= -1;
+                }
+                
+                // Reset opponent when it goes off screen
+                if (opponent.y > canvas.height + 100) {
+                    opponent.y = -100;
+                    opponent.lane = Math.floor(Math.random() * laneCount);
+                    opponent.x = (canvas.width - roadWidth) / 2 + (opponent.lane * laneWidth) + laneWidth / 2;
+                    opponent.speed = 3 + Math.random() * 2;
+                    opponent.health = 100;
+                }
+                
+                // Check collision
+                if (
+                    Math.abs(opponent.x - playerCar.x) < (playerCar.width + opponent.width) / 2 - 10 &&
+                    Math.abs(opponent.y - playerCar.y) < (playerCar.height + opponent.height) / 2 - 10
+                ) {
+                    health -= 5;
+                    playerCar.speed *= 0I'll build a car racing game with Road Rash-style combat mechanics. Let me create a complete HTML5 game with canvas rendering.
+
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>

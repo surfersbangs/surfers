@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic JS Website</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #333;
+        }
+        
+        .content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Welcome to My Basic JS Website</h1>
+        <p>A simple demonstration of JavaScript functionality</p>
+    </header>
+    
+    <div class="content">
+        <button onclick="showMessage()">Click Me!</button>
+        <button onclick="changeBackground()">Change Background</button>
+        <button onclick="addItem()">Add List Item</button>
+        
+        <div id="output">
+            <p>Click the buttons to see some magic happen!</p>
+        </div>
+        
+        <ul id="itemList"></ul>
+    </div>
+
+    <script>
+        let clickCount = 0;
+        
+        function showMessage() {
+            clickCount++;
+            const output = document.getElementById('output');
+            output.innerHTML = `
+                <p>You clicked the button ${clickCount} times!</p>
+                <p>Current time: ${new Date().toLocaleTimeString()}</p>
+            `;
+        }
+        
+        function changeBackground() {
+            const colors = ['#ffcccc', '#ccffcc', '#ccccff', '#ffffcc', '#ffccff'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            document.body.style.backgroundColor = randomColor;
+        }
+        
+        function addItem() {
+            const list = document.getElementById('itemList');
+            const newItem = document.createElement('li');
+            newItem.textContent = `Item ${list.children.length + 1} - Added at ${new Date().toLocaleTimeString()}`;
+            list.appendChild(newItem);
+        }
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

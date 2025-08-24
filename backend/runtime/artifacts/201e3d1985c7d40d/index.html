@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sliding Puzzle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 5px;
+            margin: 0 auto 20px;
+            width: 300px;
+            height: 300px;
+        }
+
+        .tile {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .tile:hover {
+            transform: scale(0.95);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .empty {
+            background: #f0f0f0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: default;
+        }
+
+        .empty:hover {
+            transform: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            background: linear-gradient(145deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .win-message {
+            margin-top: 20px;
+            font-size: 1.5em;
+            color: #4CAF50;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .win-message.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 400px) {
+            .puzzle-board {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .tile {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Sliding Puzzle</h1>
+        
+        <div class="stats">
+            <div>Moves: <span id="move-count">0</span></div>
+            <div>Time: <span id="timer">0s</span></div>
+        </div>
+
+        <div class="puzzle-board" id="puzzle-board"></div>
+
+        <div class="controls">
+            <button onclick="shufflePuzzle()">Shuffle</button>
+            <button onclick="resetGame()">Reset</button>
+        </div>
+
+        <div class="win-message" id="win-message">Puzzle Solved! 🎉</div>
+    </div>
+
+    <script>
+        const boardSize = 3;
+        let board = [];
+        let emptyPos = { row: 2, col: 2 };
+        let moveCount = 0;
+        let gameStarted = false;
+        let timerInterval;
+        let seconds = 0;
+
+        function initializeBoard() {
+            const puzzleBoard = document.getElementById('puzzle-board');
+            puzzleBoard.innerHTML = '';
+            
+            for (let row = 0; row < boardSize; row++) {
+                board[row] = [];
+                for (let col = 0; col < boardSize; col++) {
+                    const value = row * boardSize + col + 1;
+                    if (value < boardSize * boardSize) {
+                        board[row][col] = value;
+                    } else {
+                        board[row][col] = 0; // Empty tile
+                    }
+                }
+            }
+            
+            renderBoard();
+        }
+
+        function renderBoard() {
+            const puzzleBoard = document.getElementById('puzzle-board');
+            puzzleBoard.innerHTML = '';
+            
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    const value = board[row][col];
+                    const tile = document.createElement('div');
+                    tile.className = value === 0 ? 'tile empty' : 'tile';
+                    
+                    if (value !== 0) {
+                        tile.textContent = value;
+                        tile.onclick = () => moveTile(row, col);
+                    }
+                    
+                    puzzleBoard.appendChild(tile);
+                }
+            }
+        }
+
+        function moveTile(row, col) {
+            if (!gameStarted) {
+                startGame();
+            }
+
+            // Check if the clicked tile is adjacent to the empty space
+            const isAdjacent = 
+                (Math.abs(row - emptyPos.row) === 1 && col === emptyPos.col) ||
+                (Math.abs(col - emptyPos.col) === 1 && row === emptyPos.row);
+            
+            if (isAdjacent) {
+                // Swap the clicked tile with the empty space
+                board[emptyPos.row][emptyPos.col] = board[row][col];
+                board[row][col] = 0;
+                emptyPos = { row, col };
+                
+                moveCount++;
+                document.getElementById('move-count').textContent = moveCount;
+                
+                renderBoard();
+                checkWin();
+            }
+        }
+
+        function shufflePuzzle() {
+            resetGame();
+            
+            // Perform random valid moves to shuffle
+            for (let i = 0; i < 1000; i++) {
+                const directions = [];
+                if (emptyPos.row > 0) directions.push('up');
+                if (emptyPos.row < boardSize - 1) directions.push('down');
+                if (emptyPos.col > 0) directions.push('left');
+                if (emptyPos.col < boardSize - 1) directions.push('right');
+                
+                const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                
+                let targetRow = emptyPos.row;
+                let targetCol = emptyPos.col;
+                
+                switch (randomDir) {
+                    case 'up': targetRow--; break;
+                    case 'down': targetRow++; break;
+                    case 'left': targetCol--; break;
+                    case 'right': targetCol++; break;
+                }
+                
+                // Swap
+                board[emptyPos.row][emptyPos.col] = board[targetRow][targetCol];
+                board[targetRow][targetCol] = 0;
+                emptyPos = { row: targetRow, col: targetCol };
+            }
+            
+            moveCount = 0;
+            document.getElementById('move-count').textContent = moveCount;
+            renderBoard();
+        }
+
+        function checkWin() {
+            let correct = true;
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    const expectedValue = row * boardSize + col + 1;
+                    if (row === boardSize - 1 && col === boardSize - 1) {
+                        if (board[row][col] !== 0) correct = false;
+                    } else if (board[row][col] !== expectedValue) {
+                        correct = false;
+                    }
+                }
+            }
+            
+            if (correct) {
+                document.getElementById('win-message').classList.add('show');
+                clearInterval(timerInterval);
+            }
+        }
+
+        function startGame() {
+            if (!gameStarted) {
+                gameStarted = true;
+                timerInterval = setInterval(() => {
+                    seconds++;
+                    document.getElementById('timer').textContent = seconds + 's';
+                }, 1000);
+            }
+        }
+
+        function resetGame() {
+            clearInterval(timerInterval);
+            gameStarted = false;
+            moveCount = 0;
+            seconds = 0;
+            document.getElementById('move-count').textContent = moveCount;
+            document.getElementById('timer').textContent = '0s';
+            document.getElementById('win-message').classList.remove('show');
+            
+            emptyPos = { row: 2, col: 2 };
+            initializeBoard();
+        }
+
+        // Initialize the game
+        initializeBoard();
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

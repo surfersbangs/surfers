@@ -1,0 +1,16 @@
+<!DOCTYPE html><title>My Portfolio</title><body style="font-family:sans-serif;text-align:center;padding:2rem"><h1>John Doe</h1><p>Web Developer & Designer</p><p>Building beautiful digital experiences</p><a href="mailto:john@example.com" style="color:blue">Contact Me</a>
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+```

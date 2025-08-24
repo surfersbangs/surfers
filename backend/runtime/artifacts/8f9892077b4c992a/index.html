@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+.App {
+    text-align: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-container {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
+    width: 100%;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.game-info {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.game-info p {
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.new-game-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.new-game-btn:hover {
+    background: #218838;
+}
+
+.guess-form {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.guess-form input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.guess-form input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.guess-form button {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.guess-form button:hover:not(:disabled) {
+    background: #0056b3;
+}
+
+.guess-form button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+</style></head><body>
+<script>
+const express = require('express');
+const cors = require('cors');
+const app = express();
+const PORT = 3001;
+
+app.use(cors());
+app.use(express.json());
+
+let targetNumber = null;
+let attempts = 0;
+
+app.post('/api/new-game', (req, res) => {
+    targetNumber = Math.floor(Math.random() * 100) + 1;
+    attempts = 0;
+    res.json({ message: 'New game started!' });
+});
+
+app.post('/api/guess', (req, res) => {
+    const { guess } = req.body;
+    
+    if (!targetNumber) {
+        return res.status(400).json({ error: 'Start a new game first' });
+    }
+
+    attempts++;
+    const guessNum = parseInt(guess);
+
+    if (guessNum === targetNumber) {
+        const winMessage = `Congratulations! You guessed ${targetNumber} in ${attempts} attempts!`;
+        targetNumber = null;
+        return res.json({ result: 'win', message: winMessage, attempts });
+    }
+
+    if (guessNum < targetNumber) {
+        return res.json({ result: 'low', message: 'Too low! Try again.', attempts });
+    } else {
+        return res.json({ result: 'high', message: 'Too high! Try again.', attempts });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
+
+
+import React, { useState } from 'react';
+import './App.css';
+
+function App() {
+    const [guess, setGuess] = useState('');
+    const [message, setMessage] = useState('Click "New Game" to start!');
+    const [attempts, setAttempts] = useState(0);
+    const [gameActive, setGameActive] = useState(false);
+
+    const startNewGame = async () => {
+        try {
+            const response = await fetch('http://localhost:3001/api/new-game', {
+                method: 'POST'
+            });
+            const data = await response.json();
+            setMessage(data.message);
+            setAttempts(0);
+            setGameActive(true);
+            setGuess('');
+        } catch (error) {
+            setMessage('Error starting game');
+        }
+    };
+
+    const handleGuess = async (e) => {
+        e.preventDefault();
+        if (!guess || !gameActive) return;
+
+        try {
+            const response = await fetch('http://localhost:3001/api/guess', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ guess })
+            });
+            const data = await response.json();
+            setMessage(data.message);
+            setAttempts(data.attempts);
+            
+            if (data.result === 'win') {
+                setGameActive(false);
+            }
+            
+            setGuess('');
+        } catch (error) {
+            setMessage('Error making guess');
+        }
+    };
+
+    return (
+        <div className="App">
+            <div className="game-container">
+                <h1>Number Guessing Game</h1>
+                <p>Guess a number between 1 and 100</p>
+                
+                <div className="game-info">
+                    <p>{message}</p>
+                    <p>Attempts: {attempts}</p>
+                </div>
+
+                <div className="controls">
+                    <button onClick={startNewGame} className="new-game-btn">
+                        New Game
+                    </button>
+                    
+                    <form onSubmit={handleGuess} className="guess-form">
+                        <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={guess}
+                            onChange={(e) => setGuess(e.target.value)}
+                            placeholder="Enter your guess"
+                            disabled={!gameActive}
+                        />
+                        <button type="submit" disabled={!gameActive}>
+                            Guess
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default App;
+</script>
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body></html>

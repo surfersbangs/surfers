@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<canvas id="game" width="400" height="400"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let x = 100, y = 100, dx = 2, dy = 3;
+
+function update() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#4CAF50';
+  ctx.fillRect(x, y, 30, 30);
+  if (x + 30 > canvas.width || x < 0) dx = -dx;
+  if (y + 30 > canvas.height || y < 0) dy = -dy;
+  x += dx; y += dy;
+  requestAnimationFrame(update);
+}
+update();
+</script>
+```[DONE]
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>

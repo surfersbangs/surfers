@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background-color: #fff;
+            color: #1d1d1f;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            height: 44px;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 980px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+            padding: 0 22px;
+        }
+
+        .nav-item {
+            color: #f5f5f7;
+            font-size: 12px;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-item:hover {
+            opacity: 1;
+        }
+
+        .apple-logo {
+            font-size: 18px;
+        }
+
+        /* Hero Sections */
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding-top: 44px;
+            background-size: cover;
+            background-position: center;
+            color: #fff;
+        }
+
+        .hero h2 {
+            font-size: 56px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .hero h3 {
+            font-size: 28px;
+            font-weight: 400;
+            margin-bottom: 14px;
+        }
+
+        .hero-links {
+            margin-top: 15px;
+            display: flex;
+            gap: 30px;
+        }
+
+        .link {
+            color: #2997ff;
+            text-decoration: none;
+            font-size: 21px;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        /* Product Grid */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 10px;
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        .product {
+            height: 580px;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #1d1d1f;
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        .product h3 {
+            font-size: 40px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .product p {
+            font-size: 21px;
+            margin-bottom: 14px;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #f5f5f7;
+            padding: 40px 0;
+            color: #6e6e73;
+            font-size: 12px;
+        }
+
+        .footer-container {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 0 22px;
+        }
+
+        .footer-links {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            border-bottom: 1px solid #d2d2d7;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .footer-column h4 {
+            color: #1d1d1f;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .footer-column a {
+            display: block;
+            color: #6e6e73;
+            text-decoration: none;
+            margin-bottom: 8px;
+        }
+
+        .footer-column a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 734px) {
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero h2 {
+                font-size: 40px;
+            }
+            
+            .hero h3 {
+                font-size: 21px;
+            }
+            
+            .footer-links {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="nav-item apple-logo">􀣺</div>
+            <div class="nav-item">Store</div>
+            <div class="nav-item">Mac</div>
+            <div class="nav-item">iPad</div>
+            <div class="nav-item">iPhone</div>
+            <div class="nav-item">Watch</div>
+            <div class="nav-item">AirPods</div>
+            <div class="nav-item">TV & Home</div>
+            <div class="nav-item">Entertainment</div>
+            <div class="nav-item">Accessories</div>
+            <div class="nav-item">Support</div>
+            <div class="nav-item">􀐶</div>
+            <div class="nav-item">􀈎</div>
+        </div>
+    </nav>
+
+    <div class="hero" style="background-image: url('https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2>iPhone 15 Pro</h2>
+        <h3>Titanium. So strong. So light. So Pro.</h3>
+        <div class="hero-links">
+            <a href="#" class="link">Learn more ></a>
+            <a href="#" class="link">Buy ></a>
+        </div>
+    </div>
+
+    <div class="hero" style="background-image: url('https://images.unsplash.com/photo-1616348436168-de43ad0db179?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80'); margin-top: 10px;">
+        <h2>iPhone 15</h2>
+        <h3>New camera. New design. Newphoria.</h3>
+        <div class="hero-links">
+            <a href="#" class="link">Learn more ></a>
+            <a href="#" class="link">Buy ></a>
+        </div>
+    </div>
+
+    <div class="product-grid">
+        <div class="product" style="background-image: url('https://images.unsplash.com/photo-1574755393849-623942496936?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');">
+            <h3>MacBook Air</h3>
+            <p>Supercharged by M2</p>
+            <div class="hero-links">
+                <a href="#" class="link">Learn more ></a>
+                <a href="#" class="link">Buy ></a>
+            </div>
+        </div>
+        <div class="product" style="background-image: url('https://images.unsplash.com/photo-1546868871-7041f2a55e12?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');">
+            <h3>Apple Watch</h3>
+            <p>Smarter. Brighter. Mightier.</p>
+            <div class="hero-links">
+                <a href="#" class="link">Learn more ></a>
+                <a href="#" class="link">Buy ></a>
+            </div>
+        </div>
+        <div class="product" style="background-image: url('https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');">
+            <h3>iPad</h3>
+            <p>Lovable. Drawable. Magical.</p>
+            <div class="hero-links">
+                <a href="#" class="link">Learn more ></a>
+                <a href="#" class="link">Buy ></a>
+            </div>
+        </div>
+        <div class="product" style="background-image: url('https://images.unsplash.com/photo-1613040809024-b4ef7ba99bc3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');">
+            <h3>AirPods</h3>
+            <p>Magical sound experience</p>
+            <div class="hero-links">
+                <a href="#" class="link">Learn more ></a>
+                <a href="#" class="link">Buy ></a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-container">
+            <div class="footer-links">
+                <div class="footer-column">
+                    <h4>Shop and Learn</h4>
+                    <a href="#">Store</a>
+                    <a href="#">Mac</a>
+                    <a href="#">iPad</a>
+                    <a href="#">iPhone</a>
+                    <a href="#">Watch</a>
+                    <a href="#">AirPods</a>
+                    <a href="#">TV & Home</a>
+                    <a href="#">Accessories</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Services</h4>
+                    <a href="#">Apple Music</a>
+                    <a href="#">Apple TV+</a>
+                    <a href="#">Apple Fitness+</a>
+                    <a href="#">Apple News+</a>
+                    <a href="#">Apple Arcade</a>
+                    <a href="#">iCloud</a>
+                    <a href="#">Apple One</a>
+                    <a href="#">Apple Card</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Apple Store</h4>
+                    <a href="#">Find a Store</a>
+                    <a href="#">Genius Bar</a>
+                    <a href="#">Today at Apple</a>
+                    <a href="#">Apple Camp</a>
+                    <a href="#">Financing</a>
+                    <a href="#">Apple Trade In</a>
+                    <a href="#">Order Status</a>
+                    <a href="#">Shopping Help</a>
+                </div>
+                <div class="footer-column">
+                    <h4>For Business</h4>
+                    <a href="#">Apple and Business</a>
+                    <a href="#">Shop for Business</a>
+                    <h4>For Education</h4>
+                    <a href="#">Apple and Education</a>
+                    <a href="#">Shop for Education</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Apple Values</h4>
+                    <a href="#">Accessibility</a>
+                    <a href="#">Environment</a>
+                    <a href="#">Privacy</a>
+                    <a href="#">Supplier Responsibility</a>
+                </div>
+            </div>
+            <p>Copyright © 2023 Apple Inc. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Simple navigation highlight
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.nav-item').forEach(i => i.style.opacity = '0.8');
+                this.style.opacity = '1';
+            });
+        });
+
+        // Product hover effect
+        document.querySelectorAll('.product').forEach(product => {
+            product.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.01)';
+                this.style.transition = 'transform 0.3s ease';
+            });
+            
+            product.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+            });
+        });
+
+        // Smooth scrolling for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

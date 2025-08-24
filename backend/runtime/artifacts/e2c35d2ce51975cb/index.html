@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<canvas id="game" width="400" height="300"></canvas>
+<script>
+  let score = 0, x = 100, y = 100;
+  const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+  
+  function update() {
+    ctx.clearRect(0, 0, 400, 300);
+    x += 2; if (x > 400) x = 0;
+    ctx.fillStyle = 'blue'; ctx.fillRect(x, y, 50, 50);
+    ctx.fillStyle = 'black'; ctx.fillText('Score: ' + score, 10, 20);
+    requestAnimationFrame(update);
+  }
+  
+  canvas.onclick = e => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left, clickY = e.clientY - rect.top;
+    if (clickX > x && clickX < x + 50 && clickY > y && clickY < y + 50) score++;
+  };
+  
+  update();
+</script>
+```
+
+Copy this into a file, open it in a browser, and click the blue square to score points!
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>

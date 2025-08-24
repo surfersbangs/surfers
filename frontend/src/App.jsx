@@ -34,14 +34,34 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 24, color: "#eee", background: "#0B0B0C", minHeight: "100vh" }}>
-          <div style={{
-            maxWidth: 720, margin: "40px auto", background: "#121214",
-            border: "1px solid #2A2A2A", borderRadius: 16, padding: 16,
-          }}>
+          <div
+            style={{
+              maxWidth: 720,
+              margin: "40px auto",
+              background: "#121214",
+              border: "1px solid #2A2A2A",
+              borderRadius: 16,
+              padding: 16,
+            }}
+          >
             <h2 style={{ marginTop: 0 }}>something broke. 😵‍💫</h2>
-            <p style={{ opacity: 0.8 }}>the app hit a runtime error but stayed up thanks to the error boundary.</p>
-            <pre style={{ whiteSpace: "pre-wrap", background: "#0f0f10", padding: 12, borderRadius: 12, border: "1px solid #2A2A2A" }}>{this.state.msg}</pre>
-            <p style={{ opacity: 0.7, fontSize: 12 }}>check the console for stack trace (DevTools ▶ Console).</p>
+            <p style={{ opacity: 0.8 }}>
+              the app hit a runtime error but stayed up thanks to the error boundary.
+            </p>
+            <pre
+              style={{
+                whiteSpace: "pre-wrap",
+                background: "#0f0f10",
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid #2A2A2A",
+              }}
+            >
+              {this.state.msg}
+            </pre>
+            <p style={{ opacity: 0.7, fontSize: 12 }}>
+              check the console for stack trace (DevTools ▶ Console).
+            </p>
           </div>
         </div>
       );
@@ -63,9 +83,7 @@ const LogoSmall = ({ className = "h-5 w-5" }) => (
   <img src="/logo.png" alt="surfers logo" className={className} />
 );
 
-const LogoLarge = ({ className = "h-24 w-24" }) => (
-  <LogoSmall className={className} />
-);
+const LogoLarge = ({ className = "h-24 w-24" }) => <LogoSmall className={className} />;
 
 const ProfileIcon = ({ className = "h-5 w-5" }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="#E5E7EB">
@@ -73,7 +91,6 @@ const ProfileIcon = ({ className = "h-5 w-5" }) => (
     <path d="M5 20c1.5-3.5 5-5 7-5s5.5 1.5 7 5" strokeWidth="1.5" />
   </svg>
 );
-
 
 const BackArrow = ({ className = "h-5 w-5" }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="#E5E7EB">
@@ -101,7 +118,14 @@ const Spinner = ({ className = "h-4 w-4" }) => (
     <g fill="none" stroke="#C8CCD2" strokeWidth="2">
       <circle cx="12" cy="12" r="9" opacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9">
-        <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.5s" repeatCount="indefinite" />
+        <animateTransform
+          attributeName="transform"
+          type="rotate"
+          from="0 12 12"
+          to="360 12 12"
+          dur="0.5s"
+          repeatCount="indefinite"
+        />
       </path>
     </g>
   </svg>
@@ -112,10 +136,14 @@ const Spinner = ({ className = "h-4 w-4" }) => (
    ========================= */
 function CodeBlock({ inline, className, children, ...props }) {
   const codeRef = useRef(null);
-  const raw = Array.isArray(children) ? children.join("") : (children ?? "");
+  const raw = Array.isArray(children) ? children.join("") : children ?? "";
   const lang = (className || "").replace("language-", "").trim();
 
+  // detect single-line (no newline)
+  const isSingleLine = !raw.includes("\n");
+
   useEffect(() => {
+    if (inline || isSingleLine) return; // skip highlight for tiny inline snippets
     let mounted = true;
     import("highlight.js")
       .then((mod) => {
@@ -140,31 +168,42 @@ function CodeBlock({ inline, className, children, ...props }) {
       .catch(() => {
         if (codeRef.current) codeRef.current.textContent = raw;
       });
-    return () => { mounted = false; };
-  }, [raw, lang]);
+    return () => {
+      mounted = false;
+    };
+  }, [raw, lang, inline, isSingleLine]);
 
-  if (inline) {
+  // force single-line snippets into inline style
+  if (inline || isSingleLine) {
     return (
       <code
-        className={`px-1.5 py-0.5 rounded bg-[#151517] border border-[#2A2A2A] ${className || ""}`}
+        className="px-1.5 py-0.5 rounded bg-[#151517] border border-[#2A2A2A] text-sm"
         {...props}
       >
         {raw}
       </code>
     );
   }
+
+  // multi-line → normal block
   return (
     <pre className="mb-3 rounded-[12px] bg-[#0f0f10] border border-[#2A2A2A] overflow-x-auto">
-      <code ref={codeRef} className={`block p-3 ${className || ""}`} />
+      <code
+        ref={codeRef}
+        style={{ background: "transparent" }}
+        className={`block p-3 ${className || ""}`}
+      />
     </pre>
   );
 }
+
 
 function Markdown({ children }) {
   const text = typeof children === "string" ? children : String(children ?? "");
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
+      
       components={{
         a: ({ node, ...props }) => (
           <a
@@ -175,12 +214,22 @@ function Markdown({ children }) {
           />
         ),
         p: ({ node, ...props }) => <p {...props} className="mb-3" />,
-        ul: ({ node, ...props }) => <ul {...props} className="list-disc pl-5 mb-3 space-y-1" />,
-        ol: ({ node, ...props }) => <ol {...props} className="list-decimal pl-5 mb-3 space-y-1" />,
+        ul: ({ node, ...props }) => (
+          <ul {...props} className="list-disc pl-5 mb-3 space-y-1" />
+        ),
+        ol: ({ node, ...props }) => (
+          <ol {...props} className="list-decimal pl-5 mb-3 space-y-1" />
+        ),
         li: ({ node, ...props }) => <li {...props} className="leading-6" />,
-        h1: ({ node, ...props }) => <h1 {...props} className="text-xl font-semibold mb-2 mt-3" />,
-        h2: ({ node, ...props }) => <h2 {...props} className="text-lg font-semibold mb-2 mt-3" />,
-        h3: ({ node, ...props }) => <h3 {...props} className="text-base font-semibold mb-2 mt-3" />,
+        h1: ({ node, ...props }) => (
+          <h1 {...props} className="text-xl font-semibold mb-2 mt-3" />
+        ),
+        h2: ({ node, ...props }) => (
+          <h2 {...props} className="text-lg font-semibold mb-2 mt-3" />
+        ),
+        h3: ({ node, ...props }) => (
+          <h3 {...props} className="text-base font-semibold mb-2 mt-3" />
+        ),
         blockquote: ({ node, ...props }) => (
           <blockquote
             {...props}
@@ -191,6 +240,7 @@ function Markdown({ children }) {
       }}
     >
       {text}
+      
     </ReactMarkdown>
   );
 }
@@ -207,6 +257,230 @@ const VERSION_TAG = "app modal rev - 2025-08-23";
    ========================= */
 const FENCE_GLOBAL_RE = /```(\w+)?\n([\s\S]*?)```/g;
 const INLINE_LANG_RE = /^\s*(html?|css|js|javascript|typescript)\s*:?\s*$/i;
+
+// --- NEW: robust file extraction for CodeModal tabs ---
+const ANY_FENCE_RE = /```([^\n]*)\n([\s\S]*?)```/g;
+
+const LANG_MAP = {
+  "c++": "cpp",
+  cpp: "cpp",
+  "c#": "csharp",
+  csharp: "csharp",
+  "objective-c": "objectivec",
+  "obj-c": "objectivec",
+  html: "html",
+  htm: "html",
+  css: "css",
+  js: "javascript",
+  javascript: "javascript",
+  ts: "typescript",
+  typescript: "typescript",
+  tsx: "tsx",
+  jsx: "jsx",
+  py: "python",
+  python: "python",
+  java: "java",
+  cs: "csharp",
+  go: "go",
+  rs: "rust",
+  rust: "rust",
+  php: "php",
+  rb: "ruby",
+  ruby: "ruby",
+  swift: "swift",
+  kt: "kotlin",
+  kotlin: "kotlin",
+  sh: "bash",
+  bash: "bash",
+  yaml: "yaml",
+  yml: "yaml",
+  json: "json",
+  xml: "xml",
+  md: "markdown",
+  markdown: "markdown",
+  sql: "sql",
+  lua: "lua",
+  r: "r",
+  dart: "dart",
+  scala: "scala",
+  zig: "zig",
+  txt: "plaintext",
+  plaintext: "plaintext",
+};
+
+const EXT_FROM_LANG = {
+  html: "html",
+  css: "css",
+  javascript: "js",
+  typescript: "ts",
+  tsx: "tsx",
+  jsx: "jsx",
+  python: "py",
+  java: "java",
+  csharp: "cs",
+  cpp: "cpp",
+  c: "c",
+  go: "go",
+  rust: "rs",
+  php: "php",
+  ruby: "rb",
+  swift: "swift",
+  kotlin: "kt",
+  bash: "sh",
+  yaml: "yml",
+  json: "json",
+  xml: "xml",
+  markdown: "md",
+  sql: "sql",
+  lua: "lua",
+  r: "r",
+  dart: "dart",
+  scala: "scala",
+  zig: "zig",
+  plaintext: "txt",
+};
+
+function normalizeLang(s) {
+  if (!s) return "";
+  const key = s.trim().toLowerCase();
+  return LANG_MAP[key] || key;
+}
+
+function extFromFilename(fname) {
+  const base = (fname || "").trim().split("/").pop() || "";
+  if (/^\.gitignore$/i.test(base)) return "plaintext";
+  if (/^makefile$/i.test(base)) return "plaintext";
+  if (/^dockerfile$/i.test(base)) return "dockerfile";
+  const m = base.match(/\.([A-Za-z0-9]+)$/);
+  const ext = m ? m[1].toLowerCase() : "";
+  // map a few common ones to lang names
+  const extLangMap = {
+    js: "javascript",
+    mjs: "javascript",
+    cjs: "javascript",
+    ts: "typescript",
+    tsx: "tsx",
+    jsx: "jsx",
+    html: "html",
+    htm: "html",
+    css: "css",
+    scss: "scss",
+    sass: "scss",
+    py: "python",
+    rb: "ruby",
+    rs: "rust",
+    go: "go",
+    java: "java",
+    cs: "csharp",
+    cpp: "cpp",
+    cxx: "cpp",
+    cc: "cpp",
+    c: "c",
+    php: "php",
+    kt: "kotlin",
+    swift: "swift",
+    sh: "bash",
+    bash: "bash",
+    yml: "yaml",
+    yaml: "yaml",
+    json: "json",
+    xml: "xml",
+    md: "markdown",
+    sql: "sql",
+    lua: "lua",
+    r: "r",
+    dart: "dart",
+    scala: "scala",
+    zig: "zig",
+    txt: "plaintext",
+  };
+  return extLangMap[ext] || "plaintext";
+}
+
+function defaultNameForLang(lang, idx = 0) {
+  const l = normalizeLang(lang) || "plaintext";
+  if (l === "html") return "index.html";
+  const ext = EXT_FROM_LANG[l] || "txt";
+  return idx ? `snippet-${idx + 1}.${ext}` : `main.${ext}`;
+}
+
+function isLikelyFilenameToken(s) {
+  const t = (s || "").trim().replace(/:$/, "");
+  if (!t || /\s/.test(t)) return false;
+  if (t.startsWith(".")) return true; // .gitignore, .env
+  if (t.includes(".")) return true; // style.css, main.cpp
+  const specials = ["Makefile", "Dockerfile", "CMakeLists.txt", "LICENSE", "README", "README.md"];
+  return specials.includes(t);
+}
+
+function extractFilesFromText(text) {
+  const files = [];
+  if (!text) return files;
+
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const startMatch = lines[i].match(/^\s*```(.*)$/);
+    if (!startMatch) continue;
+
+    const info = (startMatch[1] || "").trim(); // could be lang or filename
+    const startIdx = i;
+    const codeLines = [];
+    i++;
+    while (i < lines.length && !/^\s*```/.test(lines[i])) {
+      codeLines.push(lines[i]);
+      i++;
+    }
+    // closing fence consumed by loop (if present)
+
+    let filename = null;
+    let lang = "";
+
+    // If the info string itself looks like a filename, use it
+    if (isLikelyFilenameToken(info)) {
+      filename = info.replace(/:$/, "");
+      lang = extFromFilename(filename);
+    } else {
+      lang = normalizeLang(info);
+    }
+
+    // If no filename yet, look a few lines above for a lone filename token (incl. bullets/headings)
+    if (!filename) {
+      for (let k = startIdx - 1, tries = 0; k >= 0 && tries < 4; k--, tries++) {
+        let probe = lines[k].trim();
+        if (!probe) continue;
+        probe = probe.replace(/^[-*]\s+/, ""); // bullet lists
+        probe = probe.replace(/^#{1,6}\s+/, ""); // markdown headings
+        if (isLikelyFilenameToken(probe)) {
+          filename = probe.replace(/:$/, "");
+          if (!lang) lang = extFromFilename(filename);
+          break;
+        }
+      }
+    }
+
+    // Fallback naming
+    if (!lang) lang = "plaintext";
+    if (!filename) filename = defaultNameForLang(lang, files.length);
+
+    files.push({
+      name: filename,
+      lang,
+      code: codeLines.join("\n"),
+    });
+  }
+
+  // If nothing was fenced, fall back to the merged parser to at least show something
+  if (files.length === 0) {
+    const parsed = parseGeneratedCode(text);
+    files.push({
+      name: defaultNameForLang(parsed.lang || "plaintext"),
+      lang: parsed.lang || "plaintext",
+      code: parsed.code || "",
+    });
+  }
+
+  return files;
+}
 
 function collectFencedBlocks(text) {
   const out = [];
@@ -235,7 +509,7 @@ function splitByHeadings(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (INLINE_LANG_RE.test(line)) {
-      current = line.trim().replace(/:$/,"").toLowerCase();
+      current = line.trim().replace(/:$/, "").toLowerCase();
       if (current === "javascript") current = "js";
       if (current === "htm") current = "html";
       if (!sections[current]) sections[current] = [];
@@ -255,7 +529,9 @@ function assembleHtml({ html, css, js }) {
   if (!html) {
     const headBits = [];
     if (css) headBits.push(`<style>\n${css}\n</style>`);
-    const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${headBits.length ? "\n" + headBits.join("\n") : ""}`;
+    const head = `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${
+      headBits.length ? "\n" + headBits.join("\n") : ""
+    }`;
     const bodyScript = js ? `\n<script>\n${js}\n</script>` : "";
     return `<!DOCTYPE html>
 <html><head>${head}</head><body>${bodyScript}</body></html>`;
@@ -265,7 +541,10 @@ function assembleHtml({ html, css, js }) {
     if (/<\/head>/i.test(result)) {
       result = result.replace(/<\/head>/i, `<style>\n${css}\n</style>\n</head>`);
     } else {
-      result = result.replace(/<html[^>]*>/i, `$&\n<head><style>\n${css}\n</style></head>`);
+      result = result.replace(
+        /<html[^>]*>/i,
+        `$&\n<head><style>\n${css}\n</style></head>`
+      );
     }
   }
   if (js) {
@@ -282,14 +561,16 @@ function parseGeneratedCode(fullText) {
   const text = fullText || "";
 
   const fenced = collectFencedBlocks(text);
-  const fencedHtml = fenced.filter(b => (b.lang === "html" || b.lang === "htm"));
-  const fencedCss  = fenced.filter(b => b.lang === "css");
-  const fencedJs   = fenced.filter(b => b.lang === "js" || b.lang === "javascript" || b.lang === "ts" || b.lang === "typescript");
+  const fencedHtml = fenced.filter((b) => b.lang === "html" || b.lang === "htm");
+  const fencedCss = fenced.filter((b) => b.lang === "css");
+  const fencedJs = fenced.filter(
+    (b) => b.lang === "js" || b.lang === "javascript" || b.lang === "ts" || b.lang === "typescript"
+  );
 
   const htmlFrag = findHtmlFragment(text);
   if (htmlFrag) {
-    const css = fencedCss.map(b => b.code).join("\n\n").trim();
-    const js  = fencedJs.map(b => b.code).join("\n\n").trim();
+    const css = fencedCss.map((b) => b.code).join("\n\n").trim();
+    const js = fencedJs.map((b) => b.code).join("\n\n").trim();
     const merged = assembleHtml({ html: htmlFrag, css: css || null, js: js || null });
     return { lang: "html", code: merged };
   }
@@ -305,14 +586,16 @@ function parseGeneratedCode(fullText) {
   }
 
   if (fenced.length) {
-    const htmlLongest = fencedHtml.sort((a,b)=>b.code.length-a.code.length)[0]?.code || null;
-    const cssMerged = fencedCss.map(b => b.code).join("\n\n").trim() || null;
-    const jsMerged  = fencedJs.map(b => b.code).join("\n\n").trim() || null;
+    const htmlLongest = fencedHtml.sort((a, b) => b.code.length - a.code.length)[0]?.code || null;
+    const cssMerged = fencedCss.map((b) => b.code).join("\n\n").trim() || null;
+    const jsMerged = fencedJs.map((b) => b.code).join("\n\n").trim() || null;
     const merged = assembleHtml({ html: htmlLongest, css: cssMerged, js: jsMerged });
     return { lang: "html", code: merged };
   }
 
-  const maybeTagIdx = text.search(/<(!DOCTYPE|html|head|body|canvas|div|section|main|script|style)\b/i);
+  const maybeTagIdx = text.search(
+    /<(!DOCTYPE|html|head|body|canvas|div|section|main|script|style)\b/i
+  );
   if (maybeTagIdx !== -1) {
     const tail = text.slice(maybeTagIdx).trim();
     return { lang: "html", code: tail };
@@ -330,7 +613,13 @@ function makeStreamIngestor(onText, onDone) {
   let mode = "unknown"; // raw | sse | ndjson
   let buf = "";
 
-  function handleRaw(s) { onText(s); }
+  // --- FIX: strip stray [DONE] tokens in all modes ---
+  const stripDone = (s = "") => s.replace(/^\s*(?:data:\s*)?\[DONE\]\s*$/gm, "");
+
+  function handleRaw(s) {
+    const c = stripDone(s);
+    if (c) onText(c);
+  }
   function handleSSE(s) {
     buf += s;
     const parts = buf.split(/\n\n/);
@@ -340,15 +629,26 @@ function makeStreamIngestor(onText, onDone) {
       for (const line of lines) {
         const m = line.match(/^\s*data:\s?(.*)$/);
         if (!m) continue;
-        const payload = m[1];
-        if (payload === "[DONE]") { onDone?.(); return; }
+        let payload = m[1];
+        if (payload === "[DONE]") {
+          onDone?.();
+          return;
+        }
+        payload = stripDone(payload);
         if (!payload) continue;
         if (payload.trim().startsWith("{")) {
           try {
             const j = JSON.parse(payload);
-            const t = j?.delta ?? j?.text ?? j?.content ?? j?.choices?.[0]?.delta?.content ?? "";
+            const t =
+              j?.delta ??
+              j?.text ??
+              j?.content ??
+              j?.choices?.[0]?.delta?.content ??
+              "";
             if (t) onText(t);
-          } catch { onText(payload); }
+          } catch {
+            onText(payload);
+          }
         } else {
           onText(payload);
         }
@@ -359,14 +659,18 @@ function makeStreamIngestor(onText, onDone) {
     buf += s;
     const lines = buf.split(/\r?\n/);
     buf = lines.pop() ?? "";
-    for (const line of lines) {
-      const t = line.trim();
-      if (!t) continue;
+    for (let line of lines) {
+      line = stripDone(line.trim());
+      if (!line) continue;
       try {
-        const j = JSON.parse(t);
-        const out = j?.delta ?? j?.text ?? j?.content ?? j?.choices?.[0]?.delta?.content ?? "";
-        if (out) onText(out);
-      } catch { onText(t); }
+        const j = JSON.parse(line);
+        const out =
+          j?.delta ?? j?.text ?? j?.content ?? j?.choices?.[0]?.delta?.content ?? "";
+        const c = stripDone(out);
+        if (c) onText(c);
+      } catch {
+        onText(line);
+      }
     }
   }
 
@@ -377,6 +681,9 @@ function makeStreamIngestor(onText, onDone) {
         if (/^\s*data:/m.test(probe)) mode = "sse";
         else if (probe.trim().startsWith("{") || probe.includes("\n{")) mode = "ndjson";
         else mode = "raw";
+      } else if (mode === "raw" && /^\s*data:/m.test(chunk)) {
+        // upgrade if the stream switches to SSE later
+        mode = "sse";
       }
       if (mode === "sse") return handleSSE(chunk);
       if (mode === "ndjson") return handleNDJSON(chunk);
@@ -384,16 +691,22 @@ function makeStreamIngestor(onText, onDone) {
     },
     end() {
       if (mode === "ndjson" && buf.trim()) {
-        try {
-          const j = JSON.parse(buf.trim());
-          const out = j?.delta ?? j?.text ?? j?.content ?? j?.choices?.[0]?.delta?.content ?? "";
-          if (out) onText(out);
-        } catch { onText(buf); }
+        const tail = stripDone(buf.trim());
+        if (tail) {
+          try {
+            const j = JSON.parse(tail);
+            const out =
+              j?.delta ?? j?.text ?? j?.content ?? j?.choices?.[0]?.delta?.content ?? "";
+            if (out) onText(stripDone(out));
+          } catch {
+            onText(tail);
+          }
+        }
       } else if (mode === "sse") {
         handleSSE("\n\n");
       }
       onDone?.();
-    }
+    },
   };
 }
 
@@ -457,25 +770,54 @@ const ViewModal = ({ open, url, onClose }) => {
   );
 };
 
-// CODE modal (editor-like)
-const CodeModal = ({ open, lang, code, onClose }) => {
+// CODE modal (editor-like) — TABS NOW DYNAMIC FROM OUTPUT
+const CodeModal = ({ open, files = [], lang, code, onClose }) => {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (open) setActive(0);
+  }, [open]);
+
   if (!open) return null;
+
+  const hasFiles = Array.isArray(files) && files.length > 0;
+  const fallbackName = defaultNameForLang(normalizeLang(lang || "plaintext"));
+  const tabFiles = hasFiles ? files : [{ name: fallbackName, lang: normalizeLang(lang || "plaintext"), code: code || "" }];
+  const shown = tabFiles[Math.min(active, tabFiles.length - 1)];
+
   return (
     <Overlay onClose={onClose}>
       <div className="w-[min(980px,94vw)] h-[min(82vh,760px)] rounded-2xl overflow-hidden shadow-2xl border border-[#2A2A2A] bg-[#111214]">
         <div className="h-10 bg-[#1b1b1c] border-b border-[#2A2A2A] flex items-center">
           <div className="px-3 text-xs text-[#9aa0a6]">download as ZIP</div>
-          <div className="ml-2 flex items-center gap-2 text-sm">
-            <div className="px-3 py-1 bg-[#0f0f10] text-[#e5e7eb] rounded-t-md border-x border-t border-[#2A2A2A]">index.html</div>
-            <div className="px-3 py-1 text-[#9aa0a6]">README.md</div>
-            <div className="px-3 py-1 text-[#9aa0a6]">.gitignore</div>
+          <div className="ml-2 flex items-center gap-2 text-sm overflow-x-auto">
+            {tabFiles.map((f, idx) => (
+              <button
+                key={`${f.name}-${idx}`}
+                type="button"
+                onClick={() => setActive(idx)}
+                className={
+                  idx === active
+                    ? "px-3 py-1 bg-[#0f0f10] text-[#e5e7eb] rounded-t-md border-x border-t border-[#2A2A2A]"
+                    : "px-3 py-1 text-[#9aa0a6]"
+                }
+                title={f.name}
+              >
+                {f.name}
+              </button>
+            ))}
           </div>
         </div>
         <div className="w-full h-[calc(100%-40px)] overflow-auto">
-          {code ? (
-            <div className="p-4">
-              <Markdown>{` \`\`\`${lang || ""}\n${code}\n\`\`\` `}</Markdown>
-            </div>
+          {shown?.code ? (
+           <div className="p-4 h-full overflow-y-auto">
+  <Markdown>
+    {`\`\`\`${shown.lang || ""}\n${shown.code}\n\`\`\``}
+  </Markdown>
+</div>
+
+
+
           ) : (
             <div className="p-6 text-[#c7cbd2]">No code found in this message.</div>
           )}
@@ -487,9 +829,19 @@ const CodeModal = ({ open, lang, code, onClose }) => {
 
 // LIVE modal (go live. yeah.)
 const LiveModal = ({
-  open, onClose, slug, setSlug, busy, note, onPublish, baseSuffix = ".surfers.co.in",
-  onCheck, avail,
-  onCopy, copied, liveUrl
+  open,
+  onClose,
+  slug,
+  setSlug,
+  busy,
+  note,
+  onPublish,
+  baseSuffix = ".surfers.co.in",
+  onCheck,
+  avail,
+  onCopy,
+  copied,
+  liveUrl,
 }) => {
   if (!open) return null;
   const full = slug ? `${slug}${baseSuffix}` : `project-name${baseSuffix}`;
@@ -500,7 +852,9 @@ const LiveModal = ({
           aria-label="close"
           onClick={onClose}
           className="absolute right-5 top-5 text-2xl leading-none text-[#6b7280] hover:text-[#111]"
-        >×</button>
+        >
+          ×
+        </button>
 
         <h2 className="text-[48px] font-extrabold tracking-tight mb-6">
           <span className="text-[#333]">go live.</span>{" "}
@@ -512,7 +866,11 @@ const LiveModal = ({
             <div className="flex-1 relative">
               <input
                 value={slug}
-                onChange={(e) => setSlug(e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase())}
+                onChange={(e) =>
+                  setSlug(
+                    e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase()
+                  )
+                }
                 placeholder="project-name"
                 className="w-full h-12 rounded-xl border border-gray-300 px-4 pr-[160px] text-lg outline-none focus:ring-2 focus:ring-red-400"
               />
@@ -525,14 +883,33 @@ const LiveModal = ({
             <button
               onClick={onCopy}
               className={`h-12 w-12 rounded-xl border ${
-                copied ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
+                copied
+                  ? "bg-blue-600 border-blue-600 text-white"
+                  : "border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
               }`}
               title="copy full domain"
             >
               {/* copy icon */}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="mx-auto">
-                <rect x="9" y="9" width="11" height="11" rx="2" stroke={copied ? "#fff" : "#6b7280"} strokeWidth="1.6"/>
-                <rect x="4" y="4" width="11" height="11" rx="2" stroke={copied ? "#fff" : "#6b7280"} strokeWidth="1.6" opacity="0.7"/>
+                <rect
+                  x="9"
+                  y="9"
+                  width="11"
+                  height="11"
+                  rx="2"
+                  stroke={copied ? "#fff" : "#6b7280"}
+                  strokeWidth="1.6"
+                />
+                <rect
+                  x="4"
+                  y="4"
+                  width="11"
+                  height="11"
+                  rx="2"
+                  stroke={copied ? "#fff" : "#6b7280"}
+                  strokeWidth="1.6"
+                  opacity="0.7"
+                />
               </svg>
             </button>
           </div>
@@ -545,8 +922,12 @@ const LiveModal = ({
             >
               check the availability of domain
             </button>
-            {avail === "free" && <span className="ml-2 text-green-600 text-sm">available ✓</span>}
-            {avail === "taken" && <span className="ml-2 text-red-600 text-sm">already in use</span>}
+            {avail === "free" && (
+              <span className="ml-2 text-green-600 text-sm">available ✓</span>
+            )}
+            {avail === "taken" && (
+              <span className="ml-2 text-red-600 text-sm">already in use</span>
+            )}
           </div>
         </div>
 
@@ -572,9 +953,27 @@ const LiveModal = ({
             >
               {/* external-link icon */}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M14 5h5v5" stroke="#1a73e8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M10 14L19 5" stroke="#1a73e8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M19 14v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" stroke="#1a73e8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path
+                  d="M14 5h5v5"
+                  stroke="#1a73e8"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 14L19 5"
+                  stroke="#1a73e8"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M19 14v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"
+                  stroke="#1a73e8"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
               <span className="break-all">{liveUrl}</span>
             </a>
@@ -652,8 +1051,17 @@ function SurfersApp() {
   const [pendingImages, setPendingImages] = useState([]);
 
   // NEW modal controller (single source of truth)
-  // { type: 'code'|'view'|'live'|null, msgId, code, lang, url, note }
-  const [modal, setModal] = useState({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+  // { type: 'code'|'view'|'live'|null, msgId, code, lang, url, note, files, activeIdx }
+  const [modal, setModal] = useState({
+    type: null,
+    msgId: null,
+    code: "",
+    lang: "",
+    url: "",
+    note: "",
+    files: [],
+    activeIdx: 0,
+  });
 
   // preview/publish
   const [previews, setPreviews] = useState({});
@@ -677,7 +1085,13 @@ function SurfersApp() {
   const chatFileInputRef = useRef(null);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
-  const makeAbsoluteUrl = (u) => { try { return new URL(u, API_URL).toString(); } catch { return u; } };
+  const makeAbsoluteUrl = (u) => {
+    try {
+      return new URL(u, API_URL).toString();
+    } catch {
+      return u;
+    }
+  };
 
   const LINE_HEIGHT_PX = 20;
   const MAX_LINES = 7;
@@ -699,14 +1113,21 @@ function SurfersApp() {
   useEffect(() => {
     if (prompt) return;
     const full = TW_LIST[twIdx];
-    const typingDelay = 150, deletingDelay = 25, holdAtEnd = 450, holdAtStart = 120;
+    const typingDelay = 150,
+      deletingDelay = 25,
+      holdAtEnd = 450,
+      holdAtStart = 120;
     let timer;
     if (!twDeleting) {
       if (twSub < full.length) timer = setTimeout(() => setTwSub(twSub + 1), typingDelay);
       else timer = setTimeout(() => setTwDeleting(true), holdAtEnd);
     } else {
       if (twSub > 0) timer = setTimeout(() => setTwSub(twSub - 1), deletingDelay);
-      else timer = setTimeout(() => { setTwDeleting(false); setTwIdx((twIdx + 1) % TW_LIST.length); }, holdAtStart);
+      else
+        timer = setTimeout(() => {
+          setTwDeleting(false);
+          setTwIdx((twIdx + 1) % TW_LIST.length);
+        }, holdAtStart);
     }
     return () => clearTimeout(timer);
   }, [prompt, twIdx, twSub, twDeleting]);
@@ -714,7 +1135,9 @@ function SurfersApp() {
   useEffect(() => {
     if (!chatEndRef.current) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { atBottomRef.current = entry.isIntersecting; },
+      ([entry]) => {
+        atBottomRef.current = entry.isIntersecting;
+      },
       { root: null, threshold: 0.01, rootMargin: "0px 0px -96px 0px" }
     );
     observer.observe(chatEndRef.current);
@@ -735,59 +1158,112 @@ function SurfersApp() {
     if (user && pendingPrompt) {
       const toSend = pendingPrompt;
       const imgs = pendingImages;
-      setPendingPrompt(""); setPendingImages([]); setAuthOpen(false); setView("chat");
-      setTimeout(() => { sendMessageStream(toSend, imgs); setPrompt(""); setImages([]); setFigmas([]); }, 0);
+      setPendingPrompt("");
+      setPendingImages([]);
+      setAuthOpen(false);
+      setView("chat");
+      setTimeout(() => {
+        sendMessageStream(toSend, imgs);
+        setPrompt("");
+        setImages([]);
+        setFigmas([]);
+      }, 0);
     }
   }, [user, pendingPrompt, pendingImages]);
 
   useEffect(() => () => stopStreaming(), []);
-  useEffect(() => { if (view === "home") stopStreaming(); }, [view]);
+  useEffect(() => {
+    if (view === "home") stopStreaming();
+  }, [view]);
 
   const resetPhoneAuth = () => {
-    setPhone(""); setOtp(""); setOtpSent(false); setConfirmation(null);
-    try { if (typeof window !== "undefined" && window.recaptchaVerifier) { window.recaptchaVerifier.clear?.(); window.recaptchaVerifier = null; } } catch {}
+    setPhone("");
+    setOtp("");
+    setOtpSent(false);
+    setConfirmation(null);
+    try {
+      if (typeof window !== "undefined" && window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear?.();
+        window.recaptchaVerifier = null;
+      }
+    } catch {}
   };
   const handleGoogleLogin = async () => {
-    try { await signInWithPopup(auth, googleProvider); resetPhoneAuth(); setAuthOpen(false); }
-    catch (err) { console.error(err); }
+    try {
+      await signInWithPopup(auth, googleProvider);
+      resetPhoneAuth();
+      setAuthOpen(false);
+    } catch (err) {
+      console.error(err);
+    }
   };
   const handleLogout = async () => {
-    try { await signOut(auth); } catch (err) { console.error(err); }
-    finally { resetPhoneAuth(); setAuthOpen(false); clearConversationState(); setView("home"); }
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      resetPhoneAuth();
+      setAuthOpen(false);
+      clearConversationState();
+      setView("home");
+    }
   };
   const sendOtp = async () => {
     try {
       if (typeof window !== "undefined" && !window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+        });
       }
-      const confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
-      setConfirmation(confirmationResult); setOtpSent(true);
+      const confirmationResult = await signInWithPhoneNumber(
+        auth,
+        phone,
+        window.recaptchaVerifier
+      );
+      setConfirmation(confirmationResult);
+      setOtpSent(true);
     } catch (err) {
-      console.error("OTP error:", err); alert("Failed to send OTP. Format: +91xxxxxxxxxx");
+      console.error("OTP error:", err);
+      alert("Failed to send OTP. Format: +91xxxxxxxxxx");
     }
   };
   const verifyOtp = async () => {
-    try { if (confirmation) { await confirmation.confirm(otp); resetPhoneAuth(); setAuthOpen(false); } }
-    catch (err) { console.error("OTP verify error:", err); alert("Invalid OTP"); }
+    try {
+      if (confirmation) {
+        await confirmation.confirm(otp);
+        resetPhoneAuth();
+        setAuthOpen(false);
+      }
+    } catch (err) {
+      console.error("OTP verify error:", err);
+      alert("Invalid OTP");
+    }
   };
 
   const resizeTextarea = () => {
-    const el = textareaRef.current; if (!el) return;
+    const el = textareaRef.current;
+    if (!el) return;
     el.style.height = "auto";
     const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
     el.style.height = next + "px";
     el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
   };
-  useEffect(() => { resizeTextarea(); }, [prompt]);
+  useEffect(() => {
+    resizeTextarea();
+  }, [prompt]);
 
   const resizeChatTextarea = () => {
-    const el = chatTextareaRef.current; if (!el) return;
+    const el = chatTextareaRef.current;
+    if (!el) return;
     el.style.height = "auto";
     const next = Math.min(el.scrollHeight, MAX_TA_HEIGHT);
     el.style.height = next + "px";
     el.style.overflowY = el.scrollHeight > MAX_TA_HEIGHT ? "auto" : "hidden";
   };
-  useEffect(() => { resizeChatTextarea(); }, [chatInput]);
+  useEffect(() => {
+    resizeChatTextarea();
+  }, [chatInput]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -800,54 +1276,93 @@ function SurfersApp() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view]);
 
-  useEffect(() => { if (view === "chat") chatTextareaRef.current?.focus(); }, [view]);
+  useEffect(() => {
+    if (view === "chat") chatTextareaRef.current?.focus();
+  }, [view]);
 
   useEffect(() => {
     if (!showAttach) return;
-    const onClick = (e) => { if (attachRef.current && !attachRef.current.contains(e.target)) setShowAttach(false); };
-    const onEsc = (e) => { if (e.key === "Escape") setShowAttach(false); };
+    const onClick = (e) => {
+      if (attachRef.current && !attachRef.current.contains(e.target)) setShowAttach(false);
+    };
+    const onEsc = (e) => {
+      if (e.key === "Escape") setShowAttach(false);
+    };
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onEsc);
-    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onEsc);
+    };
   }, [showAttach]);
   useEffect(() => {
     if (!showChatAttach) return;
-    const onClick = (e) => { if (chatAttachRef.current && !chatAttachRef.current.contains(e.target)) setShowChatAttach(false); };
-    const onEsc = (e) => { if (e.key === "Escape") setShowChatAttach(false); };
+    const onClick = (e) => {
+      if (chatAttachRef.current && !chatAttachRef.current.contains(e.target))
+        setShowChatAttach(false);
+    };
+    const onEsc = (e) => {
+      if (e.key === "Escape") setShowChatAttach(false);
+    };
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onEsc);
-    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onEsc); };
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onEsc);
+    };
   }, [showChatAttach]);
 
-  const onAddImageClick = () => { fileInputRef.current?.click(); setShowAttach(false); };
+  const onAddImageClick = () => {
+    fileInputRef.current?.click();
+    setShowAttach(false);
+  };
   const onFilesPicked = (e) => {
-    const files = Array.from(e.target.files || []); if (!files.length) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
     const previews = files.map((f) => ({ file: f, url: URL.createObjectURL(f), name: f.name }));
-    setImages((prev) => [...prev, ...previews]); e.target.value = "";
+    setImages((prev) => [...prev, ...previews]);
+    e.target.value = "";
   };
   const onAddFigmaClick = () => {
-    const url = window.prompt("Paste Figma link:"); if (!url) return;
+    const url = window.prompt("Paste Figma link:");
+    if (!url) return;
     const ok = /figma\.com\/(file|design)\//i.test(url);
-    if (!ok) { alert("That doesn't look like a Figma file link."); return; }
-    setFigmas((prev) => [...prev, url]); setShowAttach(false);
+    if (!ok) {
+      alert("That doesn't look like a Figma file link.");
+      return;
+    }
+    setFigmas((prev) => [...prev, url]);
+    setShowAttach(false);
   };
   const removeImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
   const removeFigma = (i) => setFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
-  const onAddImageClickChat = () => { chatFileInputRef.current?.click(); setShowChatAttach(false); };
+  const onAddImageClickChat = () => {
+    chatFileInputRef.current?.click();
+    setShowChatAttach(false);
+  };
   const onFilesPickedChat = (e) => {
-    const files = Array.from(e.target.files || []); if (!files.length) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
     const previews = files.map((f) => ({ file: f, url: URL.createObjectURL(f), name: f.name }));
-    setChatImages((prev) => [...prev, ...previews]); e.target.value = "";
+    setChatImages((prev) => [...prev, ...previews]);
+    e.target.value = "";
   };
   const onAddFigmaClickChat = () => {
-    const url = window.prompt("Paste Figma link:"); if (!url) return;
+    const url = window.prompt("Paste Figma link:");
+    if (!url) return;
     const ok = /figma\.com\/(file|design)\//i.test(url);
-    if (!ok) { alert("That doesn't look like a Figma file link."); return; }
-    setChatFigmas((prev) => [...prev, url]); setShowChatAttach(false);
+    if (!ok) {
+      alert("That doesn't look like a Figma file link.");
+      return;
+    }
+    setChatFigmas((prev) => [...prev, url]);
+    setShowChatAttach(false);
   };
-  const removeChatImage = (i) => setChatImages((prev) => prev.filter((_, idx) => idx !== i));
-  const removeChatFigma = (i) => setChatFigmas((prev) => prev.filter((_, idx) => idx !== i));
+  const removeChatImage = (i) =>
+    setChatImages((prev) => prev.filter((_, idx) => idx !== i));
+  const removeChatFigma = (i) =>
+    setChatFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
   const addAssistantPlaceholder = () => {
     const id = Date.now() + Math.random();
@@ -856,26 +1371,43 @@ function SurfersApp() {
   };
 
   const appendToAssistant = (id, chunk) => {
-    setMessages(prev => prev.map(m =>
-      m.id === id
-        ? { ...m, content: (m.content || "") + (chunk || ""), className: "transition-all duration-200" }
-        : m
-    ));
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? { ...m, content: (m.content || "") + (chunk || ""), className: "transition-all duration-200" }
+          : m
+      )
+    );
   };
 
   const stopStreaming = (reason = "manual-stop") => {
-    try { streamAbortRef.current?.abort?.(reason); } catch {}
-    streamAbortRef.current = null; setIsStreaming(false); setPhase(null);
+    try {
+      streamAbortRef.current?.abort?.(reason);
+    } catch {}
+    streamAbortRef.current = null;
+    setIsStreaming(false);
+    setPhase(null);
   };
 
   const clearConversationState = () => {
     stopStreaming();
-    setMessages([]); setChatInput(""); setPrompt("");
-    setImages([]); setChatImages([]); setFigmas([]); setChatFigmas([]);
-    setCode(""); setIsStreaming(false); setPhase(null);
-    setPreviews({}); setPublished({});
-    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
-    setLiveBusy(false); setLiveAvail(null); setLiveResultUrl(""); setCopiedSlug(false);
+    setMessages([]);
+    setChatInput("");
+    setPrompt("");
+    setImages([]);
+    setChatImages([]);
+    setFigmas([]);
+    setChatFigmas([]);
+    setCode("");
+    setIsStreaming(false);
+    setPhase(null);
+    setPreviews({});
+    setPublished({});
+    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "", files: [], activeIdx: 0 });
+    setLiveBusy(false);
+    setLiveAvail(null);
+    setLiveResultUrl("");
+    setCopiedSlug(false);
   };
 
   // STREAMING — raw body from /api/stream-es
@@ -884,18 +1416,24 @@ function SurfersApp() {
     setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
     const asstId = addAssistantPlaceholder();
     streamBufRef.current.buf = "";
-    if (streamBufRef.current.t) { clearTimeout(streamBufRef.current.t); streamBufRef.current.t = null; }
+    if (streamBufRef.current.t) {
+      clearTimeout(streamBufRef.current.t);
+      streamBufRef.current.t = null;
+    }
 
     const hist = messages.slice(-8).map((m) => ({ role: m.role, content: m.content }));
     const formData = new FormData();
     formData.append("prompt", text);
     formData.append("history", JSON.stringify(hist));
-    attachments.forEach((img) => { if (img?.file) formData.append("images", img.file, img.name || "image.png"); });
+    attachments.forEach((img) => {
+      if (img?.file) formData.append("images", img.file, img.name || "image.png");
+    });
 
     const ac = new AbortController();
     streamAbortRef.current = ac;
 
-    let idleTimer = null, hardCapTimer = null;
+    let idleTimer = null,
+      hardCapTimer = null;
     const armTimers = () => {
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => ac.abort("idle-timeout"), STREAM_INACTIVITY_MS);
@@ -903,14 +1441,24 @@ function SurfersApp() {
         hardCapTimer = setTimeout(() => ac.abort("max-duration"), STREAM_MAX_DURATION_MS);
       }
     };
-    const clearTimers = () => { if (idleTimer) clearTimeout(idleTimer); if (hardCapTimer) clearTimeout(hardCapTimer); idleTimer = null; hardCapTimer = null; };
+    const clearTimers = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (hardCapTimer) clearTimeout(hardCapTimer);
+      idleTimer = null;
+      hardCapTimer = null;
+    };
 
     let gotAny = false;
 
     try {
-      setIsStreaming(true); armTimers();
+      setIsStreaming(true);
+      armTimers();
 
-      const res = await fetch(`${API_URL}/api/stream-es`, { method: "POST", body: formData, signal: ac.signal });
+      const res = await fetch(`${API_URL}/api/stream-es`, {
+        method: "POST",
+        body: formData,
+        signal: ac.signal,
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (!res.body) throw new Error("No response body (streaming)");
 
@@ -932,18 +1480,37 @@ function SurfersApp() {
         if (chunkStr) ingestor.feed(chunkStr);
         armTimers();
       }
-      ingestor.end(); flushNow(asstId);
+      ingestor.end();
+      flushNow(asstId);
+
+      // --- FINAL CLEANUP: ensure no stray [DONE] lines remain ---
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === asstId
+            ? {
+                ...m,
+                content: (m.content || "").replace(/^\s*(?:data:\s*)?\[DONE\]\s*$/gm, ""),
+              }
+            : m
+        )
+      );
     } catch (err) {
       const msg = String(err?.name || err || "");
-      const reason = (err && "message" in err) ? String(err.message) : msg;
-      if (!/AbortError/i.test(msg) && !/AbortError/i.test(reason) && !/manual-stop|new-message|idle-timeout|max-duration/.test(reason)) {
+      const reason = "message" in (err || {}) ? String(err.message) : msg;
+      if (
+        !/AbortError/i.test(msg) &&
+        !/AbortError/i.test(reason) &&
+        !/manual-stop|new-message|idle-timeout|max-duration/.test(reason)
+      ) {
         appendToAssistant(asstId, `\n// stream error: ${String(err)}`);
       }
     } finally {
       clearTimers();
       if (streamAbortRef.current === ac) streamAbortRef.current = null;
-      if (!gotAny) appendToAssistant(asstId, "\n// (no content received — check server logs or network)");
-      setPhase(null); setIsStreaming(false);
+      if (!gotAny)
+        appendToAssistant(asstId, "\n// (no content received — check server logs or network)");
+      setPhase(null);
+      setIsStreaming(false);
     }
   }
 
@@ -957,12 +1524,19 @@ function SurfersApp() {
     const imgs = images;
 
     if (!user) {
-      setPendingPrompt(first); setPendingImages(imgs);
-      setPrompt(""); setImages([]); setFigmas([]); setAuthOpen(true);
+      setPendingPrompt(first);
+      setPendingImages(imgs);
+      setPrompt("");
+      setImages([]);
+      setFigmas([]);
+      setAuthOpen(true);
       return;
     }
 
-    setPrompt(""); setImages([]); setFigmas([]); setView("chat");
+    setPrompt("");
+    setImages([]);
+    setFigmas([]);
+    setView("chat");
     setTimeout(() => sendMessageStream(first, imgs), 0);
   }
 
@@ -975,12 +1549,18 @@ function SurfersApp() {
     const imgs = chatImages;
 
     if (!user) {
-      setPendingPrompt(txt); setPendingImages(imgs);
-      setChatInput(""); setChatImages([]); setChatFigmas([]); setAuthOpen(true);
+      setPendingPrompt(txt);
+      setPendingImages(imgs);
+      setChatInput("");
+      setChatImages([]);
+      setChatFigmas([]);
+      setAuthOpen(true);
       return;
     }
 
-    setChatInput(""); setChatImages([]); setChatFigmas([]);
+    setChatInput("");
+    setChatImages([]);
+    setChatFigmas([]);
     setTimeout(() => sendMessageStream(txt, imgs), 0);
   };
 
@@ -995,7 +1575,11 @@ function SurfersApp() {
       return null;
     }
     const existing = previews[msgId];
-    const payload = { code: parsed.code, lang: parsed.lang || "html", artifactId: existing?.artifactId || null };
+    const payload = {
+      code: parsed.code,
+      lang: parsed.lang || "html",
+      artifactId: existing?.artifactId || null,
+    };
 
     try {
       const res = await fetch(`${API_URL}/api/preview/build`, {
@@ -1022,14 +1606,28 @@ function SurfersApp() {
   // open modals
   const openCodeModal = (id) => {
     const msg = getMsgById(id);
-    const parsed = parseGeneratedCode(msg?.content || "");
-    setModal({ type: "code", msgId: id, code: parsed.code || "", lang: parsed.lang || "html", url: "", note: "" });
+    const files = extractFilesFromText(msg?.content || "");
+    const first = files[0] || { code: "", lang: "plaintext" };
+    setModal({
+      type: "code",
+      msgId: id,
+      code: first.code || "",
+      lang: first.lang || "plaintext",
+      url: "",
+      note: "",
+      files,
+      activeIdx: 0,
+    });
   };
 
   const openViewModal = async (id) => {
-    setModal({ type: "view", msgId: id, code: "", lang: "", url: "", note: "" });
+    setModal({ type: "view", msgId: id, code: "", lang: "", url: "", note: "", files: [], activeIdx: 0 });
     const built = await buildOrUpdatePreview(id);
-    if (built?.url) setModal((m) => ({ ...m, url: `${built.url}${built.url.includes("?") ? "&" : "?"}t=${Date.now()}` }));
+    if (built?.url)
+      setModal((m) => ({
+        ...m,
+        url: `${built.url}${built.url.includes("?") ? "&" : "?"}t=${Date.now()}`,
+      }));
   };
 
   const openLiveModal = async (id) => {
@@ -1037,32 +1635,68 @@ function SurfersApp() {
     let prev = previews[id];
     if (!prev?.artifactId) {
       const built = await buildOrUpdatePreview(id);
-      if (!built) { alert("Failed to build preview before publishing."); return; }
+      if (!built) {
+        alert("Failed to build preview before publishing.");
+        return;
+      }
       prev = built;
     }
-    const defaultSlug = `proj-${(user?.uid || "anon").slice(0, 6)}-${String(id).slice(-4)}`.toLowerCase();
-    setLiveSlug(defaultSlug); setLiveBusy(false); setLiveAvail(null); setCopiedSlug(false); setLiveResultUrl("");
-    setModal({ type: "live", msgId: id, code: "", lang: "", url: "", note: "" });
+    const defaultSlug = `proj-${(user?.uid || "anon").slice(0, 6)}-${String(id)
+      .slice(-4)
+      .toLowerCase()}`;
+    setLiveSlug(defaultSlug);
+    setLiveBusy(false);
+    setLiveAvail(null);
+    setCopiedSlug(false);
+    setLiveResultUrl("");
+    setModal({ type: "live", msgId: id, code: "", lang: "", url: "", note: "", files: [], activeIdx: 0 });
   };
 
   const closeModal = () => {
-    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
-    setLiveBusy(false); setLiveAvail(null); setLiveResultUrl(""); setCopiedSlug(false);
+    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "", files: [], activeIdx: 0 });
+    setLiveBusy(false);
+    setLiveAvail(null);
+    setLiveResultUrl("");
+    setCopiedSlug(false);
   };
 
   // chat bubble text: strip all code (fenced + full HTML docs) and strip bare "index.html" lines
   const stripFenced = (t) => (t || "").replace(/```[\s\S]*?```/g, "");
-  const stripHtmlDoc = (t) => (t || "").replace(/<!DOCTYPE[\s\S]*?<\/html>/gi, "").replace(/<html[\s\S]*?<\/html>/gi, "");
-  const stripIndexHtmlMention = (t) => (t || "").replace(/^\s*index\.html\s*:?\s*$/gim, "");
-  const stripGeneratedCodeFromChat = (t) => stripIndexHtmlMention(stripHtmlDoc(stripFenced(t)));
+  const stripHtmlDoc = (t) =>
+    (t || "").replace(/<!DOCTYPE[\s\S]*?<\/html>/gi, "").replace(/<html[\s\S]*?<\/html>/gi, "");
+  const stripIndexHtmlMention = (t) =>
+    (t || "").replace(/^\s*index\.html\s*:?\s*$/gim, "");
+  const stripGeneratedCodeFromChat = (t) =>
+    stripIndexHtmlMention(stripHtmlDoc(stripFenced(t)));
+
+  // --- NEW: sticky action dock targets the latest assistant message
+  const lastAssistantId = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === "assistant" && (m.content ?? "").trim() !== "") return m.id;
+    }
+    return null;
+  })();
+  const showStickyActions = !!lastAssistantId && !isStreaming;
 
   // publish helpers
   const publishCurrent = async () => {
     const msgId = modal.msgId;
     const prev = previews[msgId];
-    if (!prev?.artifactId) { setModal((m) => ({ ...m, note: "No preview artifact. Try View first." })); return; }
-    const slug = liveSlug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-    if (!slug) { setModal((m) => ({ ...m, note: "Invalid slug." })); return; }
+    if (!prev?.artifactId) {
+      setModal((m) => ({ ...m, note: "No preview artifact. Try View first." }));
+      return;
+    }
+    const slug = liveSlug
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    if (!slug) {
+      setModal((m) => ({ ...m, note: "Invalid slug." }));
+      return;
+    }
     try {
       setLiveBusy(true);
       const res = await fetch(`${API_URL}/api/publish`, {
@@ -1079,7 +1713,7 @@ function SurfersApp() {
       const data = await res.json();
       const liveAbs = makeAbsoluteUrl(data.liveUrl);
       setPublished((p) => ({ ...p, [data.project]: data.artifactId }));
-      setLiveResultUrl(liveAbs);            // NEW: show link below button
+      setLiveResultUrl(liveAbs); // NEW: show link below button
       setModal((m) => ({ ...m, note: "Live!" }));
       setLiveBusy(false);
     } catch (err) {
@@ -1089,8 +1723,16 @@ function SurfersApp() {
   };
 
   const checkAvailability = async () => {
-    const slug = liveSlug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-    if (!slug) { setLiveAvail(null); return; }
+    const slug = liveSlug
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    if (!slug) {
+      setLiveAvail(null);
+      return;
+    }
     try {
       // If GET /live/:slug/ returns 200, it's taken; 404 means free
       const res = await fetch(`${API_URL}/live/${slug}/`, { method: "HEAD" });
@@ -1117,10 +1759,9 @@ function SurfersApp() {
 
   return (
     <div
-  className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col"
-  style={{ scrollbarGutter: "stable" }}
->
-
+      className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col"
+      style={{ scrollbarGutter: "stable" }}
+    >
       {/* ===== TOP BAR (home) ===== */}
       {view === "home" && (
         <header className="pt-4">
@@ -1128,8 +1769,12 @@ function SurfersApp() {
             <div className="relative h-[28px] flex items-center">
               <LogoSmall className="h-[18px] w-[18px]" />
               <nav className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex gap-[36px] text-[14px] leading-[20px] text-[#D1D5DB]">
-                <a href="#" className="hover:text-[#A8ADB5]">community</a>
-                <a href="#" className="hover:text-[#A8ADB5]">developers</a>
+                <a href="#" className="hover:text-[#A8ADB5]">
+                  community
+                </a>
+                <a href="#" className="hover:text-[#A8ADB5]">
+                  developers
+                </a>
               </nav>
               <div className="ml-auto cursor-pointer" onClick={() => { setAuthOpen(true); }}>
                 <ProfileIcon className="h-[20px] w-[20px]" />
@@ -1149,16 +1794,35 @@ function SurfersApp() {
                 {(images.length > 0 || figmas.length > 0) && (
                   <div className="mb-2 flex flex-wrap gap-2">
                     {images.map((img, i) => (
-                      <div key={`img-${i}`} className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]">
+                      <div
+                        key={`img-${i}`}
+                        className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]"
+                      >
                         <img src={img.url} alt={img.name} className="h-full w-full object-cover" />
-                        <button type="button" onClick={() => removeImage(i)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center">×</button>
+                        <button
+                          type="button"
+                          onClick={() => removeImage(i)}
+                          className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center"
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                     {figmas.map((url, i) => (
-                      <div key={`fig-${i}`} className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]" title={url}>
+                      <div
+                        key={`fig-${i}`}
+                        className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]"
+                        title={url}
+                      >
                         <FigmaIcon />
                         <span className="max-w-[180px] truncate">{url}</span>
-                        <button type="button" onClick={() => removeFigma(i)} className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] flex items-center justify-center">×</button>
+                        <button
+                          type="button"
+                          onClick={() => removeFigma(i)}
+                          className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] flex items-center justify-center"
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -1180,27 +1844,56 @@ function SurfersApp() {
                   onChange={(e) => setPrompt(e.target.value)}
                   onInput={resizeTextarea}
                   autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); formRef.current?.requestSubmit(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      formRef.current?.requestSubmit();
+                    }
+                  }}
                   className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
                   style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
                 />
 
                 <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
                   <div className="relative" ref={attachRef}>
-                    <button type="button" aria-label="add" onClick={() => setShowAttach((v) => !v)} className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors">+</button>
+                    <button
+                      type="button"
+                      aria-label="add"
+                      onClick={() => setShowAttach((v) => !v)}
+                      className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors"
+                    >
+                      +
+                    </button>
                     {showAttach && (
                       <div className="absolute -top-2 left-0 -translate-y-full w-[180px] rounded-[12px] bg-white text-black border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-2">
-                        <button type="button" onClick={onAddImageClick} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100">
+                        <button
+                          type="button"
+                          onClick={onAddImageClick}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
+                        >
                           <ImageIcon /> <span className="text-[14px] text-neutral-800">add image</span>
                         </button>
-                        <button type="button" onClick={onAddFigmaClick} className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100">
+                        <button
+                          type="button"
+                          onClick={onAddFigmaClick}
+                          className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
+                        >
                           <FigmaIcon /> <span className="text-[14px] text-neutral-800">add figma</span>
                         </button>
                       </div>
                     )}
                   </div>
 
-                  <button type="submit" aria-label="send" disabled={loading} className={`h-[28px] w-[28px] rounded-full ${loading ? "bg-[#2A2A2B] text-[#9AA0A6]" : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"} flex items-center justify-center transition-colors`}>
+                  <button
+                    type="submit"
+                    aria-label="send"
+                    disabled={loading}
+                    className={`h-[28px] w-[28px] rounded-full ${
+                      loading
+                        ? "bg-[#2A2A2B] text-[#9AA0A6]"
+                        : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"
+                    } flex items-center justify-center transition-colors`}
+                  >
                     {loading ? "…" : "↑"}
                   </button>
                 </div>
@@ -1214,7 +1907,14 @@ function SurfersApp() {
                 </div>
               ) : null}
 
-              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={onFilesPicked} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={onFilesPicked}
+              />
             </form>
           </Container>
         </main>
@@ -1226,10 +1926,18 @@ function SurfersApp() {
           <header className="pt-4">
             <Container>
               <div className="relative h-[28px] flex items-center">
-                <button onClick={() => { stopStreaming(); setView("home"); }} className="mr-2">
-                  <BackArrow className="h-[18px] w-[18px]" />
+                <button
+                  onClick={() => {
+                    stopStreaming();
+                    setView("home");
+                  }}
+                  className="mr-2"
+                >
+                  <BackArrow className="h-[18px] w-[18px]}" />
                 </button>
-                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"><LogoSmall className="h-[18px] w-[18px]" /></div>
+                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
+                  <LogoSmall className="h-[18px] w-[18px]" />
+                </div>
                 <div className="ml-auto cursor-pointer" onClick={() => setAuthOpen(true)}>
                   <ProfileIcon className="h-[18px] w-[18px]" />
                 </div>
@@ -1242,33 +1950,46 @@ function SurfersApp() {
               {messages.map((m) => {
                 const isAssistant = m.role === "assistant";
                 const hasContent = (m.content ?? "").trim() !== "";
-                const cleaned = isAssistant ? stripGeneratedCodeFromChat(m.content || "") : (m.content || "");
-                const textToShow = (cleaned || "").trim() || (isAssistant ? "_generated code ready — use the buttons below._" : "");
+                const cleaned = isAssistant
+                  ? stripGeneratedCodeFromChat(m.content || "")
+                  : m.content || "";
+                const textToShow =
+                  (cleaned || "").trim() ||
+                  (isAssistant ? "_generated code ready — use the buttons below._" : "");
+
+                // hide inline actions on the LAST assistant msg when sticky dock is visible
+                const showInlineActionButtons =
+                  !showStickyActions || m.id !== lastAssistantId;
 
                 return (
                   <div
-  id={`msg-${m.id}`}
-  key={m.id}
-  className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}
-  style={{ contain: "layout paint", willChange: "contents", transform: "translateZ(0)" }}
->
-
+                    id={`msg-${m.id}`}
+                    key={m.id}
+                    className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}
+                    style={{
+                      contain: "layout paint",
+                      willChange: "contents",
+                      transform: "translateZ(0)",
+                    }}
+                  >
                     <div
-                      className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${isAssistant ? "bg-transparent text-[#EDEDED]" : "bg-[#1A1A1B] text-[#EDEDED]"}`}
+                      className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${
+                        isAssistant ? "bg-transparent text-[#EDEDED]" : "bg-[#1A1A1B] text-[#EDEDED]"
+                      }`}
                       style={{
-  overflowWrap: "anywhere",
-  contain: "content",
-  backfaceVisibility: "hidden",
-  transform: "translateZ(0)"
-}}
+                        overflowWrap: "anywhere",
+                        contain: "content",
+                        backfaceVisibility: "hidden",
+                        transform: "translateZ(0)",
+                      }}
                     >
                       {isAssistant ? (
                         hasContent ? (
                           <>
                             <Markdown>{textToShow}</Markdown>
 
-                            {!isStreaming && (
-                              <div className="mt-3 flex flex-wrap items-center gap-3">
+                            {!isStreaming && showInlineActionButtons && (
+                              <div className="mt-10 flex flex-wrap items-center gap-3">
                                 <button
                                   type="button"
                                   onClick={() => openCodeModal(m.id)}
@@ -1294,7 +2015,10 @@ function SurfersApp() {
                             )}
                           </>
                         ) : isStreaming ? (
-                          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]" aria-live="polite">
+                          <div
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]"
+                            aria-live="polite"
+                          >
                             <Spinner />
                             <span>{phase === "coding" ? "writing code…" : "writing…"}</span>
                           </div>
@@ -1310,24 +2034,97 @@ function SurfersApp() {
             </Container>
           </main>
 
-          {/* input row */}
+          {/* input row + NEW centered action dock */}
           <div className="fixed left-0 right-0 bottom-0 bg-gradient-to-t from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6">
             <Container>
+              {/* --- Sticky action dock (centered above prompt) --- */}
+              {showStickyActions && (
+                <div className="w-full max-w-[720px] mx-auto mb-4 text-center">
+                  <p className="relative inline-block text-[16px] leading-5 text-[#D1D5DB] opacity-90 mb-3">
+                    You can see the code, view to see the site or go live or ask surfers for
+                    anything.
+                    {/* little arrow pointing down to the prompt box */}
+                    <svg
+                      width="120"
+                      height="26"
+                      viewBox="0 0 120 26"
+                      fill="none"
+                      className="absolute -bottom-5 left-1/2 -translate-x-1/2"
+                      aria-hidden="true"
+                    >
+                      <path d="M5 2 C 40 2, 80 2, 115 2" stroke="#6B7280" strokeWidth="1.2" opacity="0.45" />
+                      <path d="M60 2 L60 18" stroke="#6B7280" strokeWidth="1.2" opacity="0.45" />
+                      <path d="M60 18 L56 14 M60 18 L64 14" stroke="#6B7280" strokeWidth="1.2" opacity="0.45" strokeLinecap="round" />
+                    </svg>
+                  </p>
+                  <div className="flex w-full max-w-[560px] mx-auto gap-3">
+  <button
+    type="button"
+    onClick={() => openCodeModal(lastAssistantId)}
+    disabled={!lastAssistantId}
+    className="flex-1 h-10 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
+  >
+    code
+  </button>
+  <button
+    type="button"
+    onClick={() => openViewModal(lastAssistantId)}
+    disabled={!lastAssistantId}
+    className="flex-1 h-10 rounded-full bg-white text-black"
+  >
+    view
+  </button>
+  <button
+    type="button"
+    onClick={() => openLiveModal(lastAssistantId)}
+    disabled={!lastAssistantId}
+    className="flex-1 h-10 rounded-full bg-[#EF3A3A] hover:bg-[#ff3d3d] text-white"
+  >
+    go live
+  </button>
+</div>
+
+                </div>
+              )}
+
               <form ref={chatFormRef} onSubmit={sendFromChat} className="w-full max-w-[560px] mx-auto">
                 <div className="relative bg-[#121214] border-[0.5px] border-[#2A2A2A] rounded-[28px] px-[18px] pt-[12px] pb-[40px] shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
                   {(chatImages.length > 0 || chatFigmas.length > 0) && (
                     <div className="mb-2 flex flex-wrap gap-2">
                       {chatImages.map((img, i) => (
-                        <div key={`cimg-${i}`} className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]">
-                          <img src={img.url || URL.createObjectURL(img.file)} alt={img.name} className="h-full w-full object-cover" />
-                          <button type="button" onClick={() => removeChatImage(i)} className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center">×</button>
+                        <div
+                          key={`cimg-${i}`}
+                          className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]"
+                        >
+                          <img
+                            src={img.url || URL.createObjectURL(img.file)}
+                            alt={img.name}
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeChatImage(i)}
+                            className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center"
+                          >
+                            ×
+                          </button>
                         </div>
                       ))}
                       {chatFigmas.map((url, i) => (
-                        <div key={`cfig-${i}`} className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]" title={url}>
+                        <div
+                          key={`cfig-${i}`}
+                          className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]"
+                          title={url}
+                        >
                           <FigmaIcon />
                           <span className="max-w-[180px] truncate">{url}</span>
-                          <button type="button" onClick={() => removeChatFigma(i)} className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] flex items-center justify-center">×</button>
+                          <button
+                            type="button"
+                            onClick={() => removeChatFigma(i)}
+                            className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] flex items-center justify-center"
+                          >
+                            ×
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -1339,7 +2136,12 @@ function SurfersApp() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onInput={resizeChatTextarea}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); chatFormRef.current?.requestSubmit(); } }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        chatFormRef.current?.requestSubmit();
+                      }
+                    }}
                     placeholder="build anything fantastic."
                     className="w-full bg-transparent outline-none text-[16px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
                     style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
@@ -1347,26 +2149,52 @@ function SurfersApp() {
 
                   <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
                     <div className="relative" ref={chatAttachRef}>
-                      <button type="button" aria-label="add" onClick={() => setShowChatAttach((v) => !v)} className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors">+</button>
+                      <button
+                        type="button"
+                        aria-label="add"
+                        onClick={() => setShowChatAttach((v) => !v)}
+                        className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors"
+                      >
+                        +
+                      </button>
                       {showChatAttach && (
                         <div className="absolute -top-2 left-0 -translate-y-full w-[180px] rounded-[12px] bg-white text-black border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-2">
-                          <button type="button" onClick={onAddImageClickChat} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100">
+                          <button
+                            type="button"
+                            onClick={onAddImageClickChat}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
+                          >
                             <ImageIcon /> <span className="text-[14px] text-neutral-800">add image</span>
                           </button>
-                          <button type="button" onClick={onAddFigmaClickChat} className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100">
+                          <button
+                            type="button"
+                            onClick={onAddFigmaClickChat}
+                            className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
+                          >
                             <FigmaIcon /> <span className="text-[14px] text-neutral-800">add figma</span>
                           </button>
                         </div>
                       )}
                     </div>
 
-                    <button type="submit" className="h-[28px] w-[28px] rounded-full bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2] flex items-center justify-center transition-colors" aria-label="send">
+                    <button
+                      type="submit"
+                      className="h-[28px] w-[28px] rounded-full bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2] flex items-center justify-center transition-colors"
+                      aria-label="send"
+                    >
                       ↑
                     </button>
                   </div>
                 </div>
 
-                <input ref={chatFileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={onFilesPickedChat} />
+                <input
+                  ref={chatFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={onFilesPickedChat}
+                />
               </form>
             </Container>
           </div>
@@ -1377,9 +2205,9 @@ function SurfersApp() {
       {view === "home" && (
         <footer className="pb-[22px]">
           <Container>
-            <p className="mx-auto text-center text-[12px] leading-[18px] text-[#9AA0A6]">
-              privacy policy  •  terms &amp; use  •  type it. see it. launch it. —— your ideas live in seconds.
-              surfers codes anything better. faster.  •  2025 © surfers · {VERSION_TAG}
+            <p className="mx-auto text-center text-[13.8px] leading-[18px] text-[#9AA0A6]">
+              privacy policy  •  terms &amp; use  •  type it. see it. launch it. —— your ideas
+              live in seconds. surfers codes anything better. faster.  •  2025 © surfers · {VERSION_TAG}
             </p>
           </Container>
         </footer>
@@ -1394,12 +2222,22 @@ function SurfersApp() {
 
             {user ? (
               <>
-                <p className="mb-4">Welcome, {user.displayName || user.phoneNumber || user.email}</p>
-                <button onClick={handleLogout} className="w-full py-2 bg-[#FFFFFF] text-[#191919] font-medium rounded-lg">Logout</button>
+                <p className="mb-4">
+                  Welcome, {user.displayName || user.phoneNumber || user.email}
+                </p>
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-2 bg-[#FFFFFF] text-[#191919] font-medium rounded-lg"
+                >
+                  Logout
+                </button>
               </>
             ) : (
               <>
-                <button onClick={handleGoogleLogin} className="bg-[#1a73e8] text-white font-medium w-full py-2 rounded-lg flex items-center justify-center gap-2">
+                <button
+                  onClick={handleGoogleLogin}
+                  className="bg-[#1a73e8] text-white font-medium w-full py-2 rounded-lg flex items-center justify-center gap-2"
+                >
                   <span className="font-bold">G</span> continue with Google
                 </button>
 
@@ -1411,13 +2249,35 @@ function SurfersApp() {
 
                 {!otpSent ? (
                   <>
-                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 9876543210" className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    <button onClick={sendOtp} className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg">send OTP</button>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+91 9876543210"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={sendOtp}
+                      className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg"
+                    >
+                      send OTP
+                    </button>
                   </>
                 ) : (
                   <>
-                    <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="enter OTP" className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    <button onClick={verifyOtp} className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg">verify OTP</button>
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="enter OTP"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={verifyOtp}
+                      className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg"
+                    >
+                      verify OTP
+                    </button>
                   </>
                 )}
               </>
@@ -1431,7 +2291,14 @@ function SurfersApp() {
               © 2025 surfers
             </p>
 
-            <button onClick={() => { setAuthOpen(false); }} className="mt-4 text-sm text-gray-400 underline">close</button>
+            <button
+              onClick={() => {
+                setAuthOpen(false);
+              }}
+              className="mt-4 text-sm text-gray-400 underline"
+            >
+              close
+            </button>
           </div>
         </div>
       )}
@@ -1439,15 +2306,12 @@ function SurfersApp() {
       {/* ===== NEW MODALS (only one ever renders at once) ===== */}
       <CodeModal
         open={modal.type === "code"}
+        files={modal.files}
         lang={modal.lang}
         code={modal.code}
         onClose={closeModal}
       />
-      <ViewModal
-        open={modal.type === "view"}
-        url={modal.url}
-        onClose={closeModal}
-      />
+      <ViewModal open={modal.type === "view"} url={modal.url} onClose={closeModal} />
       <LiveModal
         open={modal.type === "live"}
         onClose={closeModal}

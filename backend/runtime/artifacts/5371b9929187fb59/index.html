@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MODEL Magazine</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fafafa; color: #333; line-height: 1.6; }
+        .header { background: #000; color: white; padding: 2rem; text-align: center; }
+        .header h1 { font-size: 3rem; letter-spacing: 8px; text-transform: uppercase; }
+        .header p { color: #ccc; margin-top: 0.5rem; }
+        .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; padding: 2rem; max-width: 1200px; margin: 0 auto; }
+        .model-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s ease; }
+        .model-card:hover { transform: translateY(-5px); }
+        .model-img { width: 100%; height: 400px; object-fit: cover; display: block; }
+        .model-info { padding: 1.5rem; }
+        .model-name { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .model-stats { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+        .model-desc { color: #888; font-size: 0.95rem; }
+        .footer { background: #000; color: white; text-align: center; padding: 2rem; margin-top: 3rem; }
+        @media (max-width: 768px) { .header h1 { font-size: 2rem; } .gallery { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MODEL</h1>
+        <p>Where fashion meets art</p>
+    </div>
+
+    <div class="gallery">
+        <div class="model-card">
+            <img class="model-img" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400" alt="Elena Russo">
+            <div class="model-info">
+                <div class="model-name">ELENA RUSSO</div>
+                <div class="model-stats">178cm • Paris • Elite Models</div>
+                <div class="model-desc">Featured in Vogue, Harper's Bazaar, and Elle. Known for her striking runway presence.</div>
+            </div>
+        </div>
+
+        <div class="model-card">
+            <img class="model-img" src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400" alt="Chloe Zhang">
+            <div class="model-info">
+                <div class="model-name">CHLOE ZHANG</div>
+                <div class="model-stats">175cm • Shanghai • IMG Models</div>
+                <div class="model-desc">Rising star in Asian fashion markets. Specializes in high fashion editorial.</div>
+            </div>
+        </div>
+
+        <div class="model-card">
+            <img class="model-img" src="https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400" alt="Marcus Johnson">
+            <div class="model-info">
+                <div class="model-name">MARCUS JOHNSON</div>
+                <div class="model-stats">188cm • New York • Ford Models</div>
+                <div class="model-desc">Menswear specialist with campaigns for Gucci, Tom Ford, and Calvin Klein.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>MODEL Magazine © 2024 • Fashion • Beauty • Runway</p>
+    </div>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

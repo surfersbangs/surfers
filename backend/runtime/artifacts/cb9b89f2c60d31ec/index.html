@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sliding Puzzle</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        .puzzle-container {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 4px;
+            background: #2c3e50;
+            padding: 4px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .tile {
+            width: 100px;
+            height: 100px;
+            background: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: transform 0.2s ease;
+        }
+        
+        .tile:hover {
+            transform: scale(1.02);
+            background: #2980b9;
+        }
+        
+        .empty {
+            background: transparent;
+            cursor: default;
+        }
+        
+        .empty:hover {
+            transform: none;
+            background: transparent;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #e74c3c;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        button:hover {
+            background: #c0392b;
+        }
+        
+        .win-message {
+            color: white;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .win-message.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sliding Puzzle</h1>
+    <div class="puzzle-container" id="puzzle"></div>
+    <div class="controls">
+        <button onclick="shufflePuzzle()">Shuffle</button>
+        <button onclick="resetPuzzle()">Reset</button>
+    </div>
+    <div class="win-message" id="winMessage">You Win! 🎉</div>
+
+    <script>
+        const puzzleContainer = document.getElementById('puzzle');
+        const winMessage = document.getElementById('winMessage');
+        let puzzleState = [1, 2, 3, 4, 5, 6, 7, 8, 0]; // 0 represents empty space
+        const winningState = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+
+        function createPuzzle() {
+            puzzleContainer.innerHTML = '';
+            puzzleState.forEach((num, index) => {
+                const tile = document.createElement('div');
+                tile.className = num === 0 ? 'tile empty' : 'tile';
+                tile.textContent = num === 0 ? '' : num;
+                tile.onclick = () => moveTile(index);
+                puzzleContainer.appendChild(tile);
+            });
+            checkWin();
+        }
+
+        function moveTile(index) {
+            const emptyIndex = puzzleState.indexOf(0);
+            const row = Math.floor(index / 3);
+            const col = index % 3;
+            const emptyRow = Math.floor(emptyIndex / 3);
+            const emptyCol = emptyIndex % 3;
+
+            // Check if tile is adjacent to empty space
+            if ((Math.abs(row - emptyRow) === 1 && col === emptyCol) || 
+                (Math.abs(col - emptyCol) === 1 && row === emptyRow)) {
+                // Swap tiles
+                [puzzleState[index], puzzleState[emptyIndex]] = 
+                [puzzleState[emptyIndex], puzzleState[index]];
+                createPuzzle();
+            }
+        }
+
+        function shufflePuzzle() {
+            winMessage.classList.remove('show');
+            // Simple shuffle - make 100 random moves
+            for (let i = 0; i < 100; i++) {
+                const emptyIndex = puzzleState.indexOf(0);
+                const possibleMoves = [];
+                
+                // Find all adjacent tiles
+                if (emptyIndex % 3 > 0) possibleMoves.push(emptyIndex - 1); // left
+                if (emptyIndex % 3 < 2) possibleMoves.push(emptyIndex + 1); // right
+                if (emptyIndex > 2) possibleMoves.push(emptyIndex - 3); // up
+                if (emptyIndex < 6) possibleMoves.push(emptyIndex + 3); // down
+                
+                // Random move
+                const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                [puzzleState[emptyIndex], puzzleState[randomMove]] = 
+                [puzzleState[randomMove], puzzleState[emptyIndex]];
+            }
+            createPuzzle();
+        }
+
+        function resetPuzzle() {
+            winMessage.classList.remove('show');
+            puzzleState = [...winningState];
+            createPuzzle();
+        }
+
+        function checkWin() {
+            if (puzzleState.every((num, index) => num === winningState[index])) {
+                winMessage.classList.add('show');
+            }
+        }
+
+        // Initialize
+        shufflePuzzle();
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

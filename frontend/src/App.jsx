@@ -60,19 +60,21 @@ const Container = ({ children, className = "" }) => (
 );
 
 const LogoSmall = ({ className = "h-5 w-5" }) => (
-  <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
-    <circle cx="32" cy="32" r="30" fill="#2BA6FF" />
-    <path d="M18 35c4 6 10 9 14 9s10-3 14-9c-4 3-9 5-14 5s-10-2-14-5z" fill="#fff" />
-    <path d="M23 25c2 2 4 3 9 3s7-1 9-3c-2-4-6-7-9-7s-7 3-9 7z" fill="#0E1111" />
-  </svg>
+  <img src="/logo.png" alt="surfers logo" className={className} />
 );
-const LogoLarge = ({ className = "h-24 w-24" }) => <LogoSmall className={className} />;
+
+const LogoLarge = ({ className = "h-24 w-24" }) => (
+  <LogoSmall className={className} />
+);
+
 const ProfileIcon = ({ className = "h-5 w-5" }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="#E5E7EB">
     <circle cx="12" cy="8" r="3" strokeWidth="1.5" />
     <path d="M5 20c1.5-3.5 5-5 7-5s5.5 1.5 7 5" strokeWidth="1.5" />
   </svg>
 );
+
+
 const BackArrow = ({ className = "h-5 w-5" }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="#E5E7EB">
     <path d="M15 6l-6 6 6 6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -196,8 +198,8 @@ function Markdown({ children }) {
 /* =========================
    Stream constants
    ========================= */
-const STREAM_INACTIVITY_MS = 25000;
-const STREAM_MAX_DURATION_MS = 180000;
+const STREAM_INACTIVITY_MS = 60000;
+const STREAM_MAX_DURATION_MS = 0;
 const VERSION_TAG = "app modal rev - 2025-08-23";
 
 /* =========================
@@ -486,7 +488,8 @@ const CodeModal = ({ open, lang, code, onClose }) => {
 // LIVE modal (go live. yeah.)
 const LiveModal = ({
   open, onClose, slug, setSlug, busy, note, onPublish, baseSuffix = ".surfers.co.in",
-  onCheck, avail
+  onCheck, avail,
+  onCopy, copied, liveUrl
 }) => {
   if (!open) return null;
   const full = slug ? `${slug}${baseSuffix}` : `project-name${baseSuffix}`;
@@ -517,12 +520,20 @@ const LiveModal = ({
                 {baseSuffix}
               </div>
             </div>
+
+            {/* copy button — turns blue when clicked */}
             <button
-              onClick={() => navigator.clipboard?.writeText(full)}
-              className="h-12 w-12 rounded-xl border border-gray-300 bg-white hover:bg-gray-50"
+              onClick={onCopy}
+              className={`h-12 w-12 rounded-xl border ${
+                copied ? "bg-blue-600 border-blue-600 text-white" : "border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
+              }`}
               title="copy full domain"
             >
-              📋
+              {/* copy icon */}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="mx-auto">
+                <rect x="9" y="9" width="11" height="11" rx="2" stroke={copied ? "#fff" : "#6b7280"} strokeWidth="1.6"/>
+                <rect x="4" y="4" width="11" height="11" rx="2" stroke={copied ? "#fff" : "#6b7280"} strokeWidth="1.6" opacity="0.7"/>
+              </svg>
             </button>
           </div>
 
@@ -546,8 +557,29 @@ const LiveModal = ({
             busy ? "bg-red-300" : "bg-[#EF3A3A] hover:bg-[#ff3d3d]"
           }`}
         >
-          {busy ? "publishing…" : "go live. fast dude."}
+          {"go live. fast. dude"}
         </button>
+
+        {/* live link appears ONLY after publishing */}
+        {liveUrl && (
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-300 bg-gray-50 p-3">
+            <div className="text-sm text-gray-700">live link:</div>
+            <a
+              href={liveUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 text-[#1a73e8] underline"
+            >
+              {/* external-link icon */}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M14 5h5v5" stroke="#1a73e8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M10 14L19 5" stroke="#1a73e8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M19 14v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" stroke="#1a73e8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className="break-all">{liveUrl}</span>
+            </a>
+          </div>
+        )}
 
         <p className="text-gray-600 mt-4">
           making your website live will enable anyone to use it anywhere.
@@ -607,7 +639,7 @@ function SurfersApp() {
     streamBufRef.current.t = setTimeout(() => {
       streamBufRef.current.t = null;
       flushNow(asstId);
-    }, 33);
+    }, 120);
   };
 
   const prevUidRef = useRef(null);
@@ -631,6 +663,8 @@ function SurfersApp() {
   const [liveSlug, setLiveSlug] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveAvail, setLiveAvail] = useState(null); // null | 'free' | 'taken'
+  const [copiedSlug, setCopiedSlug] = useState(false); // NEW
+  const [liveResultUrl, setLiveResultUrl] = useState(""); // NEW
 
   const formRef = useRef(null);
   const textareaRef = useRef(null);
@@ -841,6 +875,7 @@ function SurfersApp() {
     setCode(""); setIsStreaming(false); setPhase(null);
     setPreviews({}); setPublished({});
     setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+    setLiveBusy(false); setLiveAvail(null); setLiveResultUrl(""); setCopiedSlug(false);
   };
 
   // STREAMING — raw body from /api/stream-es
@@ -1006,16 +1041,20 @@ function SurfersApp() {
       prev = built;
     }
     const defaultSlug = `proj-${(user?.uid || "anon").slice(0, 6)}-${String(id).slice(-4)}`.toLowerCase();
-    setLiveSlug(defaultSlug); setLiveBusy(false); setLiveAvail(null);
+    setLiveSlug(defaultSlug); setLiveBusy(false); setLiveAvail(null); setCopiedSlug(false); setLiveResultUrl("");
     setModal({ type: "live", msgId: id, code: "", lang: "", url: "", note: "" });
   };
 
-  const closeModal = () => setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+  const closeModal = () => {
+    setModal({ type: null, msgId: null, code: "", lang: "", url: "", note: "" });
+    setLiveBusy(false); setLiveAvail(null); setLiveResultUrl(""); setCopiedSlug(false);
+  };
 
-  // chat bubble text: strip all code (fenced + full HTML docs)
+  // chat bubble text: strip all code (fenced + full HTML docs) and strip bare "index.html" lines
   const stripFenced = (t) => (t || "").replace(/```[\s\S]*?```/g, "");
   const stripHtmlDoc = (t) => (t || "").replace(/<!DOCTYPE[\s\S]*?<\/html>/gi, "").replace(/<html[\s\S]*?<\/html>/gi, "");
-  const stripGeneratedCodeFromChat = (t) => stripHtmlDoc(stripFenced(t));
+  const stripIndexHtmlMention = (t) => (t || "").replace(/^\s*index\.html\s*:?\s*$/gim, "");
+  const stripGeneratedCodeFromChat = (t) => stripIndexHtmlMention(stripHtmlDoc(stripFenced(t)));
 
   // publish helpers
   const publishCurrent = async () => {
@@ -1040,7 +1079,8 @@ function SurfersApp() {
       const data = await res.json();
       const liveAbs = makeAbsoluteUrl(data.liveUrl);
       setPublished((p) => ({ ...p, [data.project]: data.artifactId }));
-      setModal((m) => ({ ...m, note: `Live! ${liveAbs}` }));
+      setLiveResultUrl(liveAbs);            // NEW: show link below button
+      setModal((m) => ({ ...m, note: "Live!" }));
       setLiveBusy(false);
     } catch (err) {
       setModal((m) => ({ ...m, note: `Publish failed: ${String(err)}` }));
@@ -1056,7 +1096,6 @@ function SurfersApp() {
       const res = await fetch(`${API_URL}/live/${slug}/`, { method: "HEAD" });
       setLiveAvail(res.ok ? "taken" : "free");
     } catch {
-      // if fetch fails (CORS/HEAD not allowed), fall back to GET
       try {
         const res2 = await fetch(`${API_URL}/live/${slug}/`, { method: "GET" });
         setLiveAvail(res2.ok ? "taken" : "free");
@@ -1066,8 +1105,22 @@ function SurfersApp() {
     }
   };
 
+  // copy full domain for go-live (turns button blue briefly)
+  const copySlugFull = async () => {
+    const full = `${liveSlug}${".surfers.co.in"}`;
+    try {
+      await navigator.clipboard?.writeText(full);
+      setCopiedSlug(true);
+      setTimeout(() => setCopiedSlug(false), 1200);
+    } catch {}
+  };
+
   return (
-    <div className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col">
+    <div
+  className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col"
+  style={{ scrollbarGutter: "stable" }}
+>
+
       {/* ===== TOP BAR (home) ===== */}
       {view === "home" && (
         <header className="pt-4">
@@ -1193,10 +1246,21 @@ function SurfersApp() {
                 const textToShow = (cleaned || "").trim() || (isAssistant ? "_generated code ready — use the buttons below._" : "");
 
                 return (
-                  <div id={`msg-${m.id}`} key={m.id} className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}>
+                  <div
+  id={`msg-${m.id}`}
+  key={m.id}
+  className={`mb-4 flex ${isAssistant ? "justify-start" : "justify-end"}`}
+  style={{ contain: "layout paint", willChange: "contents", transform: "translateZ(0)" }}
+>
+
                     <div
                       className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${isAssistant ? "bg-transparent text-[#EDEDED]" : "bg-[#1A1A1B] text-[#EDEDED]"}`}
-                      style={{ overflowWrap: "anywhere" }}
+                      style={{
+  overflowWrap: "anywhere",
+  contain: "content",
+  backfaceVisibility: "hidden",
+  transform: "translateZ(0)"
+}}
                     >
                       {isAssistant ? (
                         hasContent ? (
@@ -1208,21 +1272,21 @@ function SurfersApp() {
                                 <button
                                   type="button"
                                   onClick={() => openCodeModal(m.id)}
-                                  className="px-4 py-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
+                                  className="px-4 py-1.5 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
                                 >
                                   code
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => openViewModal(m.id)}
-                                  className="px-4 py-2 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
+                                  className="px-4 py-1.5 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
                                 >
                                   view
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => openLiveModal(m.id)}
-                                  className="px-4 py-2 rounded-full bg-[#EA3838] hover:bg-[#ff3d3d] text-white"
+                                  className="px-4 py-1.5 rounded-full bg-[#FFFFFF] hover:bg-[#FFFFFF] text-black"
                                 >
                                   go live
                                 </button>
@@ -1394,6 +1458,9 @@ function SurfersApp() {
         onPublish={publishCurrent}
         onCheck={checkAvailability}
         avail={liveAvail}
+        onCopy={copySlugFull}
+        copied={copiedSlug}
+        liveUrl={liveResultUrl}
       />
     </div>
   );

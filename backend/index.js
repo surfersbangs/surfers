@@ -49,7 +49,7 @@ const SYSTEM_PROMPT = [
   '',
   '### Code Output Rules',
   '- Use fenced code blocks with correct language.',
-  '- For web demos, default to index.html (inline or CDN) but dont mention it in the chat you can mention it in the code.',
+  '- For web demos, default to index.html (inline or CDN) but dont mention and never mention indec.html in the output chat or code.',
   '',
   '### Branding (must follow exactly)',
   `- If asked who built you, answer exactly: "${BRAND_DEV_BY}".`,

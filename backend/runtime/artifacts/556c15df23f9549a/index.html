@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airbnb Clone</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #222222;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            position: sticky;
+            top: 0;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+            padding: 16px 0;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff385c;
+            text-decoration: none;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            border: 1px solid #dddddd;
+            border-radius: 40px;
+            padding: 10px 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .search-bar:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        .search-item {
+            padding: 0 16px;
+            border-right: 1px solid #dddddd;
+        }
+
+        .search-item:last-child {
+            border-right: none;
+        }
+
+        .search-text {
+            font-size: 14px;
+            color: #717171;
+        }
+
+        .search-icon {
+            background: #ff385c;
+            color: white;
+            border-radius: 50%;
+            padding: 10px;
+            margin-left: 8px;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .host-btn {
+            padding: 12px;
+            border-radius: 22px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .host-btn:hover {
+            background-color: #f7f7f7;
+        }
+
+        .user-icon {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: 1px solid #dddddd;
+            border-radius: 21px;
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+        }
+
+        .user-icon:hover {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 24px;
+            padding: 24px 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .filters::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-width: 80px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            padding: 8px;
+        }
+
+        .filter-item:hover, .filter-item.active {
+            opacity: 1;
+        }
+
+        .filter-icon {
+            width: 28px;
+            height: 28px;
+        }
+
+        .filter-text {
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* Property Grid */
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            padding: 24px 0;
+        }
+
+        .property-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .property-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .property-image {
+            width: 100%;
+            height: 250px;
+            border-radius: 12px;
+            object-fit: cover;
+            margin-bottom: 12px;
+        }
+
+        .property-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .property-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .property-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .property-rating {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .star-icon {
+            color: #ff385c;
+        }
+
+        .property-location {
+            color: #717171;
+            font-size: 14px;
+        }
+
+        .property-dates {
+            color: #717171;
+            font-size: 14px;
+        }
+
+        .property-price {
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        .price-bold {
+            font-weight: 800;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 40px auto;
+            border-radius: 12px;
+            max-width: 800px;
+            animation: modalFadeIn 0.3s;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            position: relative;
+            padding: 24px;
+            border-bottom: 1px solid #dddddd;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            font-size: 24px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-images {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 8px;
+            height: 400px;
+            margin-bottom: 24px;
+        }
+
+        .modal-main-image {
+            border-radius: 12px;
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+        }
+
+        .modal-secondary-images {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .modal-secondary-image {
+            border-radius: 12px;
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .search-bar {
+                display: none;
+            }
+            
+            .properties-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-images {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="#" class="logo">airbnb</a>
+                
+                <div class="search-bar">
+                    <div class="search-item">
+                        <div class="search-text">Anywhere</div>
+                    </div>
+                    <div class="search-item">
+                        <div class="search-text">Any week</div>
+                    </div>
+                    <div class="search-item">
+                        <div class="search-text">Add guests</div>
+                    </div>
+                    <div class="search-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+                
+                <div class="user-menu">
+                    <div class="host-btn">Become a Host</div>
+                    <div class="user-icon">
+                        <i class="fas fa-bars"></i>
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="filters">
+            <div class="filter-item active">
+                <img src="https://cdn-icons-png.flaticon.com/512/2972/2972185.png" class="filter-icon" alt="Beach">
+                <div class="filter-text">Beach</div>
+            </div>
+            <div class="filter-item">
+                <img src="https://cdn-icons-png.flaticon.com/512/2324/2324879.png" class="filter-icon" alt="Cabins">
+                <div class="filter-text">Cabins</div>
+            </div>
+            <div class="filter-item">
+                <img src="https://cdn-icons-png.flaticon.com/512/201/201623.png" class="filter-icon" alt="Tropical">
+                <div class="filter-text">Tropical</div>
+            </div>
+            <div class="filter-item">
+                <img src="https://cdn-icons-png.flaticon.com/512/284/284469.png" class="filter-icon" alt="Amazing views">
+                <div class="filter-text">Amazing views</div>
+            </div>
+            <div class="filter-item">
+                <img src="https://cdn-icons-png.flaticon.com/512/619/619032.png" class="filter-icon" alt="Countryside">
+                <div class="filter-text">Countryside</div>
+            </div>
+            <div class="filter-item">
+                <img src="https://cdn-icons-png.flaticon.com/512/619/619153.png" class="filter-icon" alt="Lakefront">
+                <div class="filter-text">Lakefront</div>
+            </div>
+            <div class="filter-item">
+                <img src="https://cdn-icons-png.flaticon.com/512/284/284493.png" class="filter-icon" alt="Mansions">
+                <div class="filter-text">Mansions</div>
+            </div>
+        </div>
+
+        <div class="properties-grid" id="propertiesGrid">
+            <!-- Properties will be loaded here by JavaScript -->
+        </div>
+    </div>
+
+    <div class="modal" id="propertyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Property Title</h2>
+                <span class="close-btn" id="closeModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-images" id="modalImages">
+                    <!-- Images will be loaded here -->
+                </div>
+                <div id="modalDetails">
+                    <!-- Details will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample property data
+        const properties = [
+            {
+                id: 1,
+                title: "Luxury Beach Villa",
+                location: "Maldives",
+                rating: 4.95,
+                reviews: 128,
+                price: 350,
+                images: [
+                    "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fGJlYWNoJTIwdmlsbGF8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60"
+                ],
+                description: "Stunning beachfront villa with private pool and panoramic ocean views. Perfect for romantic getaways or family vacations.",
+                amenities: ["Wi-Fi", "Pool", "Kitchen", "Parking", "Beach Access"]
+            },
+            {
+                id: 2,
+                title: "Mountain Cabin Retreat",
+                location: "Aspen, Colorado",
+                rating: 4.88,
+                reviews: 92,
+                price: 220,
+                images: [
+                    "https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1487730116645-74489c95b41b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60"
+                ],
+                description: "Cozy mountain cabin with fireplace and stunning mountain views. Perfect for skiing and outdoor adventures.",
+                amenities: ["Fireplace", "Wi-Fi", "Kitchen", "Hot Tub", "Mountain View"]
+            },
+            {
+                id: 3,
+                title: "Modern City Loft",
+                location: "New York City",
+                rating: 4.92,
+                reviews: 156,
+                price: 290,
+                images: [
+                    "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1484154218962-a197022b5858?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60"
+                ],
+                description: "Stylish loft in the heart of Manhattan with skyline views and modern amenities. Steps away from restaurants and shopping.",
+                amenities: ["Wi-Fi", "AC", "Kitchen", "City View", "Elevator"]
+            },
+            {
+                id: 4,
+                title: "Lakeside Cottage",
+                location: "Lake Tahoe, California",
+                rating: 4.97,
+                reviews: 203,
+                price: 275,
+                images: [
+                    "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1464822759849-e0e100921dae?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60"
+                ],
+                description: "Charming cottage on the shores of Lake Tahoe with private dock and breathtaking lake views. Perfect for water activities.",
+                amenities: ["Wi-Fi", "Dock", "Kitchen", "Fireplace", "Lake Access"]
+            },
+            {
+                id: 5,
+                title: "Desert Oasis",
+                location: "Sedona, Arizona",
+                rating: 4.91,
+                reviews: 87,
+                price: 320,
+                images: [
+                    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+                    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60"
+                ],
+                description: "Unique desert retreat with panoramic red rock views and private pool. Experience the magic of Sedona's energy vortexes.",
+                amenities: ["Pool", "Wi-Fi", "Kitchen", "Desert View", "Hot Tub"]
+            },
+            {
+                id: 6,
+I'll build a professional Airbnb clone with images and clickable functionalities. Since this is a frontend demo, I'll use HTML, CSS, and JavaScript with mock data.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airbnb Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Circular', -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #484848;
+        }
+
+        /* Header Styles */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: white;
+            padding: 14px 80px;
+            border-bottom: 1px solid #ebebeb;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff5a5f;
+            text-decoration: none;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ebebeb;
+            border-radius: 40px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+
+        .search-bar div {
+            padding: 0 16px;
+            border-right:
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>

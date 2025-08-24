@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceX Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            padding: 20px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            background: rgba(10, 10, 10, 0.9);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            color: #ffffff;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #007bff;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23000"/><circle cx="20" cy="20" r="2" fill="%23fff" opacity="0.7"/><circle cx="60" cy="40" r="1" fill="%23fff" opacity="0.5"/><circle cx="80" cy="70" r="1.5" fill="%23fff" opacity="0.6"/><circle cx="40" cy="80" r="1" fill="%23fff" opacity="0.4"/></svg>');
+            background-size: cover;
+            display: flex;
+            align-items: center;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #007bff, #00bfff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        /* Sections */
+        section {
+            padding: 80px 0;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+            color: #007bff;
+        }
+
+        /* Launches */
+        .launches {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .launch-card {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            transition: transform 0.3s;
+        }
+
+        .launch-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .launch-card h3 {
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+
+        /* Rockets */
+        .rockets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+
+        .rocket-card {
+            text-align: center;
+            padding: 30px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+
+        .rocket-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #007bff;
+        }
+
+        /* Footer */
+        footer {
+            background: #1a1a1a;
+            padding: 40px 0;
+            text-align: center;
+            margin-top: 80px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .footer-links a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <a href="#" class="logo">SPACEX</a>
+            <ul class="nav-links">
+                <li><a href="#launches">LAUNCHES</a></li>
+                <li><a href="#rockets">ROCKETS</a></li>
+                <li><a href="#missions">MISSIONS</a></li>
+                <li><a href="#about">ABOUT</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>MAKING LIFE MULTIPLANETARY</h1>
+            <p>Revolutionizing space technology, with the ultimate goal of enabling people to live on other planets.</p>
+            <a href="#launches" class="btn">VIEW LAUNCHES</a>
+        </div>
+    </section>
+
+    <section id="launches" class="container">
+        <h2 class="section-title">UPCOMING LAUNCHES</h2>
+        <div class="launches">
+            <div class="launch-card">
+                <h3>STARLINK MISSION</h3>
+                <p><strong>Date:</strong> December 15, 2024</p>
+                <p><strong>Launch Site:</strong> Cape Canaveral</p>
+                <p>Next batch of Starlink satellites to orbit</p>
+            </div>
+            <div class="launch-card">
+                <h3>CREW DRAGON</h3>
+                <p><strong>Date:</strong> January 20, 2025</p>
+                <p><strong>Launch Site:</strong> Kennedy Space Center</p>
+                <p>Crew rotation mission to ISS</p>
+            </div>
+            <div class="launch-card">
+                <h3>STARSHIP TEST</h3>
+                <p><strong>Date:</strong> February 10, 2025</p>
+                <p><strong>Launch Site:</strong> Starbase, Texas</p>
+                <p>Orbital flight test</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="rockets" class="container">
+        <h2 class="section-title">OUR ROCKETS</h2>
+        <div class="rockets">
+            <div class="rocket-card">
+                <div class="rocket-icon">🚀</div>
+                <h3>FALCON 9</h3>
+                <p>World's first orbital class reusable rocket</p>
+            </div>
+            <div class="rocket-card">
+                <div class="rocket-icon">🌌</div>
+                <h3>FALCON HEAVY</h3>
+                <p>Most powerful operational rocket in the world</p>
+            </div>
+            <div class="rocket-card">
+                <div class="rocket-icon">⭐</div>
+                <h3>STARSHIP</h3>
+                <p>Next generation fully reusable spacecraft</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="#">TWITTER</a>
+                <a href="#">YOUTUBE</a>
+                <a href="#">INSTAGRAM</a>
+                <a href="#">LINKEDIN</a>
+            </div>
+            <p>&copy; 2024 SPACEX CLONE. ALL RIGHTS RESERVED.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Simple animation on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = 1;
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        // Observe sections for animation
+        document.querySelectorAll('.launch-card, .rocket-card').forEach(card => {
+            card.style.opacity = 0;
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.6s ease-out';
+            observer.observe(card);
+        });
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

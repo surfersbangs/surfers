@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Number Guessing Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #message {
+            margin: 20px 0;
+            font-weight: bold;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Number Guessing Game</h1>
+    <p>Guess a number between 1 and 100</p>
+    <p>You have <span id="attempts">10</span> attempts remaining</p>
+    
+    <input type="number" id="guess" min="1" max="100" placeholder="Enter your guess">
+    <button onclick="checkGuess()">Submit Guess</button>
+    
+    <div id="message"></div>
+    
+    <script>
+        let randomNumber = Math.floor(Math.random() * 100) + 1;
+        let attempts = 10;
+        
+        function checkGuess() {
+            const guessInput = document.getElementById('guess');
+            const message = document.getElementById('message');
+            const attemptsSpan = document.getElementById('attempts');
+            
+            const userGuess = parseInt(guessInput.value);
+            
+            if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+                message.textContent = 'Please enter a valid number between 1-100';
+                return;
+            }
+            
+            attempts--;
+            attemptsSpan.textContent = attempts;
+            
+            if (userGuess === randomNumber) {
+                message.textContent = `🎉 Congratulations! You guessed the number ${randomNumber}!`;
+                endGame();
+            } else if (attempts === 0) {
+                message.textContent = `Game Over! The number was ${randomNumber}`;
+                endGame();
+            } else {
+                message.textContent = userGuess > randomNumber ? 
+                    '📈 Too high! Try again.' : '📉 Too low! Try again.';
+            }
+            
+            guessInput.value = '';
+            guessInput.focus();
+        }
+        
+        function endGame() {
+            document.getElementById('guess').disabled = true;
+            document.querySelector('button').disabled = true;
+        }
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

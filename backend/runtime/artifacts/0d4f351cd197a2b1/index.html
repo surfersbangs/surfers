@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Guess the Number</title>
+    <style>
+        body { font-family: Arial; text-align: center; margin-top: 50px; }
+        input, button { padding: 10px; margin: 10px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1>Guess the Number (1-100)</h1>
+    <input type="number" id="guess" min="1" max="100">
+    <button onclick="checkGuess()">Guess</button>
+    <p id="message"></p>
+    
+    <script>
+        let randomNumber = Math.floor(Math.random() * 100) + 1;
+        let attempts = 0;
+        
+        function checkGuess() {
+            attempts++;
+            let guess = parseInt(document.getElementById('guess').value);
+            let message = document.getElementById('message');
+            
+            if (guess === randomNumber) {
+                message.innerHTML = `🎉 Correct! You guessed it in ${attempts} attempts!`;
+                message.style.color = 'green';
+            } else if (guess < randomNumber) {
+                message.innerHTML = '📈 Too low! Try again.';
+                message.style.color = 'blue';
+            } else {
+                message.innerHTML = '📉 Too high! Try again.';
+                message.style.color = 'red';
+            }
+        }
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

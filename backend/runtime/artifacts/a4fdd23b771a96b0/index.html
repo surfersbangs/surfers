@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airbnb Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Circular', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #484848;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            border-bottom: 1px solid #ebebeb;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff5a5f;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ebebeb;
+            border-radius: 40px;
+            padding: 10px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            padding: 0 10px;
+            font-size: 14px;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-menu button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .become-host {
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid #ebebeb;
+        }
+
+        .filters {
+            display: flex;
+            gap: 20px;
+            padding: 20px 40px;
+            overflow-x: auto;
+            border-bottom: 1px solid #ebebeb;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            min-width: 70px;
+        }
+
+        .filter-icon {
+            width: 30px;
+            height: 30px;
+            opacity: 0.6;
+        }
+
+        .filter-item.active .filter-icon {
+            opacity: 1;
+            border-bottom: 2px solid #484848;
+        }
+
+        .filter-item:hover {
+            opacity: 0.8;
+        }
+
+        .listings {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 30px 40px;
+        }
+
+        .property-card {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .property-card:hover {
+            transform: scale(1.02);
+        }
+
+        .property-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .property-info {
+            padding: 10px 0;
+        }
+
+        .property-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .property-distance {
+            color: #717171;
+            margin-bottom: 5px;
+        }
+
+        .property-dates {
+            color: #717171;
+            margin-bottom: 5px;
+        }
+
+        .property-price {
+            font-weight: 600;
+        }
+
+        .property-rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .star {
+            color: #ff385c;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 15px 20px;
+            }
+            
+            .search-bar {
+                display: none;
+            }
+            
+            .listings {
+                grid-template-columns: 1fr;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">airbnb</div>
+        <div class="search-bar">
+            <input type="text" placeholder="Search destinations">
+        </div>
+        <div class="user-menu">
+            <button class="become-host">Become a Host</button>
+            <button>Account</button>
+        </div>
+    </nav>
+
+    <div class="filters">
+        <div class="filter-item active">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIgZD0iTTMgNmgxOE0zIDEyaDE4TTMgMThoMTgiLz48L3N2Zz4=" class="filter-icon">
+            <span>All</span>
+        </div>
+        <div class="filter-item">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIgZD0iTTMgNmgxOE0zIDEyaDE4TTMgMThoMTgiLz48L3N2Zz4=" class="filter-icon">
+            <span>Beach</span>
+        </div>
+        <div class="filter-item">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIgZD0iTTMgNmgxOE0zIDEyaDE4TTMgMThoMTgiLz48L3N2Zz4=" class="filter-icon">
+            <span>Mountain</span>
+        </div>
+        <div class="filter-item">
+            <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJub25lIiBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMiIgZD0iTTMgNmgxOE0zIDEyaDE4TTMgMThoMTgiLz48L3N2Zz4=" class="filter-icon">
+            <span>City</span>
+        </div>
+    </div>
+
+    <div class="listings" id="properties-list">
+        <!-- Properties will be loaded here -->
+    </div>
+
+    <script>
+        const properties = [
+            {
+                id: 1,
+                title: "Modern Loft in Downtown",
+                image: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400",
+                price: "$120/night",
+                rating: 4.89,
+                distance: "2 miles away",
+                dates: "Nov 12-17"
+            },
+            {
+                id: 2,
+                title: "Beachfront Villa",
+                image: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400",
+                price: "$250/night",
+                rating: 4.95,
+                distance: "5 miles away",
+                dates: "Dec 1-8"
+            },
+            {
+                id: 3,
+                title: "Mountain Cabin Retreat",
+                image: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400",
+                price: "$180/night",
+                rating: 4.92,
+                distance: "15 miles away",
+                dates: "Nov 20-25"
+            },
+            {
+                id: 4,
+                title: "City Center Apartment",
+                image: "https://images.unsplash.com/photo-1493663284031-b7e3aaa4c4b1?w=400",
+                price: "$95/night",
+                rating: 4.78,
+                distance: "0.5 miles away",
+                dates: "Nov 15-20"
+            },
+            {
+                id: 5,
+                title: "Lakeside Cottage",
+                image: "https://images.unsplash.com/photo-1475855581690-80accde3ae2b?w=400",
+                price: "$160/night",
+                rating: 4.86,
+                distance: "8 miles away",
+                dates: "Dec 5-12"
+            },
+            {
+                id: 6,
+                title: "Historic Townhouse",
+                image: "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?w=400",
+                price: "$140/night",
+                rating: 4.83,
+                distance: "1 mile away",
+                dates: "Nov 25-30"
+            }
+        ];
+
+        function renderProperties() {
+            const propertiesList = document.getElementById('properties-list');
+            propertiesList.innerHTML = properties.map(property => `
+                <div class="property-card">
+                    <img src="${property.image}" alt="${property.title}" class="property-image">
+                    <div class="property-info">
+                        <div class="property-title">${property.title}</div>
+                        <div class="property-distance">${property.distance}</div>
+                        <div class="property-dates">${property.dates}</div>
+                        <div class="property-price">${property.price}</div>
+                        <div class="property-rating">
+                            <span class="star">★</span>
+                            <span>${property.rating}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', renderProperties);
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

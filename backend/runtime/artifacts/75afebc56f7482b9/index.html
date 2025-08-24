@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Number Guessing Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #000000;
+            color: #ffffff;
+        }
+        h1 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #f8f9fa;
+            margin-bottom: 20px;
+        }
+        input {
+            padding: 10px;
+            margin: 10px;
+            width: 60px;
+            background-color: #2c2c2c;
+            color: #ffffff;
+            border: 2px solid #ff6b6b;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #ff6b6b;
+            color: #000000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #ff8e8e;
+        }
+        button:disabled {
+            background: #666666;
+            cursor: not-allowed;
+        }
+        #message {
+            margin: 20px 0;
+            font-weight: bold;
+            min-height: 24px;
+            color: #4ecdc4;
+        }
+        #attempts {
+            color: #ffe66d;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Guess the Number</h1>
+    <p>I'm thinking of a number between 1 and 10</p>
+    
+    <input type="number" id="guess" min="1" max="10">
+    <button onclick="checkGuess()">Guess</button>
+    
+    <div id="message"></div>
+    <div id="attempts">Attempts: 0</div>
+
+    <script>
+        let randomNumber = Math.floor(Math.random() * 10) + 1;
+        let attempts = 0;
+
+        function checkGuess() {
+            const guess = parseInt(document.getElementById('guess').value);
+            const message = document.getElementById('message');
+            const attemptsDisplay = document.getElementById('attempts');
+            
+            if (isNaN(guess) || guess < 1 || guess > 10) {
+                message.textContent = 'Please enter a number between 1-10';
+                message.style.color = '#ff6b6b';
+                return;
+            }
+
+            attempts++;
+            attemptsDisplay.textContent = `Attempts: ${attempts}`;
+
+            if (guess === randomNumber) {
+                message.textContent = `🎉 Correct! You guessed it in ${attempts} attempts!`;
+                message.style.color = '#4ecdc4';
+                disableGame();
+            } else if (guess < randomNumber) {
+                message.textContent = 'Too low! Try again.';
+                message.style.color = '#ffe66d';
+            } else {
+                message.textContent = 'Too high! Try again.';
+                message.style.color = '#ff6b6b';
+            }
+        }
+
+        function disableGame() {
+            document.querySelector('button').disabled = true;
+            document.getElementById('guess').disabled = true;
+        }
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

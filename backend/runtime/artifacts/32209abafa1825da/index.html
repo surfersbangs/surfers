@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GUDDU'S ROAD RAGE</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #ff4444;
+            font-family: 'Arial Black', Arial, sans-serif;
+        }
+        canvas {
+            border: 3px solid #ff4444;
+            background: #222;
+        }
+        .game-info {
+            margin: 10px 0;
+            display: flex;
+            gap: 30px;
+            font-size: 18px;
+        }
+        .controls {
+            margin-top: 10px;
+            color: #ff8888;
+        }
+        h1 {
+            color: #ff4444;
+            text-shadow: 2px 2px 4px #000;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>GUDDU'S ROAD RAGE</h1>
+    <div class="game-info">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>HEALTH: <span id="health">100</span></div>
+        <div>SPEED: <span id="speed">MAX</span></div>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div class="controls">CONTROLS: ARROW KEYS TO MOVE, SPACE TO ATTACK</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const healthElement = document.getElementById('health');
+        const speedElement = document.getElementById('speed');
+
+        // Game state - NOW FASTER!
+        let score = 0;
+        let health = 100;
+        let gameOver = false;
+
+        // Player bike - MAX SPEED!
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            width: 35,
+            height: 55,
+            speed: 8,  // Increased from 5
+            attackCooldown: 0
+        };
+
+        // Opponents array
+        let opponents = [];
+        let roadLines = [];
+
+        // Initialize road lines
+        for (let i = -20; i < canvas.height; i += 40) {
+            roadLines.push(i);
+        }
+
+        // Create new opponent - FASTER SPAWNS!
+        function createOpponent() {
+            opponents.push({
+                x: Math.random() * (canvas.width - 60) + 30,
+                y: -60,
+                width: 35,
+                height: 55,
+                speed: 6 + Math.random() * 3,  // Increased from 3-5 to 6-9
+                health: 2  // Less health for faster gameplay
+            });
+        }
+
+        // Draw functions
+        function drawPlayer() {
+            ctx.fillStyle = '#ff4444';
+            ctx.fillRect(player.x - player.width/2, player.y - player.height/2, player.width, player.height);
+            
+            // Draw wheels
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x - player.width/2 - 5, player.y - player.height/2 + 8, 5, 12);
+            ctx.fillRect(player.x + player.width/2, player.y - player.height/2 + 8, 5, 12);
+            ctx.fillRect(player.x - player.width/2 - 5, player.y + player.height/2 - 20, 5, 12);
+            ctx.fillRect(player.x + player.width/2, player.y + player.height/2 - 20, 5, 12);
+        }
+
+        function drawOpponent(opponent) {
+            ctx.fillStyle = '#4444ff';
+            ctx.fillRect(opponent.x - opponent.width/2, opponent.y - opponent.height/2, opponent.width, opponent.height);
+            
+            // Draw wheels
+            ctx.fillStyle = '#000';
+            ctx.fillRect(opponent.x - opponent.width/2 - 5, opponent.y - opponent.height/2 + 8, 5, 12);
+            ctx.fillRect(opponent.x + opponent.width/2, opponent.y - opponent.height/2 + 8, 5, 12);
+            ctx.fillRect(opponent.x - opponent.width/2 - 5, opponent.y + opponent.height/2 - 20, 5, 12);
+            ctx.fillRect(opponent.x + opponent.width/2, opponent.y + opponent.height/2 - 20, 5, 12);
+        }
+
+        function drawRoad() {
+            // Road
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Road lines - MOVING FASTER!
+            ctx.fillStyle = '#ff4444';
+            roadLines.forEach(line => {
+                ctx.fillRect(canvas.width/2 - 2, line, 4, 15);
+            });
+        }
+
+        // Update functions
+        function update() {
+            if (gameOver) return;
+            
+            // Move road lines - FASTER!
+            roadLines = roadLines.map(line => {
+                line += 8;  // Increased from 5
+                if (line > canvas.height) line = -20;
+                return line;
+            });
+            
+            // Update player attack cooldown - QUICKER ATTACKS!
+            if (player.attackCooldown > 0) {
+                player.attackCooldown--;
+            }
+            
+            // Update opponents
+            opponents.forEach((opponent, index) => {
+                opponent.y += opponent.speed;
+                
+                // Check collision with player
+                if (Math.abs(opponent.x - player.x) < (player.width + opponent.width)/2 &&
+                    Math.abs(opponent.y - player.y) < (player.height + opponent.height)/2) {
+                    health -= 15;  // More damage for faster gameplay
+                    healthElement.textContent = health;
+                    opponents.splice(index, 1);
+                    
+                    if (health <= 0) {
+                        gameOver = true;
+                    }
+                }
+                
+                // Remove opponents that go off screen
+                if (opponent.y > canvas.height + 100) {
+                    opponents.splice(index, 1);
+                    score += 15;  // More points for faster gameplay
+                    scoreElement.textContent = score;
+                }
+            });
+            
+            // Spawn new opponents - MORE FREQUENT SPAWNS!
+            if (Math.random() < 0.04) {  // Increased from 0.02
+                createOpponent();
+            }
+        }
+
+        // Draw game
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawRoad();
+            drawPlayer();
+            opponents.forEach(drawOpponent);
+            
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ff4444';
+                ctx.font = '48px Arial Black';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2);
+                ctx.font = '24px Arial';
+                ctx.fillText('FINAL SCORE: ' + score, canvas.width/2, canvas.height/2 + 50);
+                ctx.fillText('BOSS MODE: FAILED', canvas.width/2, canvas.height/2 + 100);
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Input handling
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    player.x = Math.max(player.width/2, player.x - player.speed);
+                    break;
+                case 'ArrowRight':
+                    player.x = Math.min(canvas.width - player.width/2, player.x + player.speed);
+                    break;
+                case 'ArrowUp':
+                    player.y = Math.max(player.height/2, player.y - player.speed);
+                    break;
+                case 'ArrowDown':
+                    player.y = Math.min(canvas.height - player.height/2, player.y + player.speed);
+                    break;
+                case ' ':
+                    if (player.attackCooldown === 0) {
+                        attack();
+                        player.attackCooldown = 20;  // Reduced from 30
+                    }
+                    break;
+            }
+        });
+
+        // Attack function
+        function attack() {
+            opponents.forEach((opponent, index) => {
+                if (Math.abs(opponent.x - player.x) < 80 &&
+                    Math.abs(opponent.y - player.y) < 80) {
+                    opponent.health--;
+                    if (opponent.health <= 0) {
+                        opponents.splice(index, 1);
+                        score += 25;  // More points for attacks
+                        scoreElement.textContent = score;
+                    }
+                }
+            });
+        }
+
+        // Start game
+        gameLoop();
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

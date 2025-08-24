@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Number Guessing Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        input {
+            padding: 10px;
+            margin: 10px;
+            width: 60px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #message {
+            margin: 20px 0;
+            font-weight: bold;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Guess the Number</h1>
+    <p>I'm thinking of a number between 1 and 10</p>
+    
+    <input type="number" id="guess" min="1" max="10">
+    <button onclick="checkGuess()">Guess</button>
+    
+    <div id="message"></div>
+    <div id="attempts">Attempts: 0</div>
+
+    <script>
+        let randomNumber = Math.floor(Math.random() * 10) + 1;
+        let attempts = 0;
+
+        function checkGuess() {
+            const guess = parseInt(document.getElementById('guess').value);
+            const message = document.getElementById('message');
+            const attemptsDisplay = document.getElementById('attempts');
+            
+            if (isNaN(guess) || guess < 1 || guess > 10) {
+                message.textContent = 'Please enter a number between 1-10';
+                return;
+            }
+
+            attempts++;
+            attemptsDisplay.textContent = `Attempts: ${attempts}`;
+
+            if (guess === randomNumber) {
+                message.textContent = `🎉 Correct! You guessed it in ${attempts} attempts!`;
+                message.style.color = 'green';
+                disableGame();
+            } else if (guess < randomNumber) {
+                message.textContent = 'Too low! Try again.';
+                message.style.color = 'blue';
+            } else {
+                message.textContent = 'Too high! Try again.';
+                message.style.color = 'red';
+            }
+        }
+
+        function disableGame() {
+            document.querySelector('button').disabled = true;
+            document.getElementById('guess').disabled = true;
+        }
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

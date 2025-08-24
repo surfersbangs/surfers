@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Clone</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #121212;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 230px;
+            background-color: #000000;
+            padding: 16px 12px;
+            overflow-y: auto;
+        }
+
+        .logo {
+            padding: 0 12px;
+            margin-bottom: 18px;
+        }
+
+        .logo img {
+            height: 40px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item:hover {
+            background-color: #282828;
+        }
+
+        .nav-item.active {
+            background-color: #282828;
+        }
+
+        .nav-item i {
+            font-size: 20px;
+            margin-right: 16px;
+        }
+
+        .nav-item span {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .library {
+            margin-top: 24px;
+        }
+
+        .playlists {
+            margin-top: 24px;
+            border-top: 1px solid #282828;
+            padding-top: 16px;
+        }
+
+        .playlist-item {
+            padding: 8px 0;
+            color: #b3b3b3;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .playlist-item:hover {
+            color: #ffffff;
+        }
+
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            background: linear-gradient(180deg, #2d1b69 0%, #121212 20%);
+            padding: 16px 32px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .nav-arrows {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-arrow {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #000000;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: #7358FF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .greeting {
+            margin-bottom: 24px;
+        }
+
+        .greeting h1 {
+            font-size: 30px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background-color: #181818;
+            padding: 16px;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            background-color: #282828;
+        }
+
+        .card-img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-desc {
+            color: #b3b3b3;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .section-title {
+            font-size: 24px;
+            margin: 30px 0 20px;
+        }
+
+        /* Player Styles */
+        .player {
+            height: 90px;
+            background-color: #181818;
+            border-top: 1px solid #282828;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 1000;
+        }
+
+        .now-playing {
+            display: flex;
+            align-items: center;
+            width: 30%;
+        }
+
+        .track-info {
+            margin-left: 14px;
+        }
+
+        .track-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .artist-name {
+            font-size: 12px;
+            color: #b3b3b3;
+        }
+
+        .track-image {
+            width: 56px;
+            height: 56px;
+            border-radius: 4px;
+        }
+
+        .player-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 40%;
+        }
+
+        .control-buttons {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+
+        .control-button {
+            color: #b3b3b3;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .control-button:hover {
+            color: #ffffff;
+        }
+
+        .control-button.play-pause {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #ffffff;
+            color: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-button.play-pause:hover {
+            transform: scale(1.05);
+        }
+
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            gap: 8px;
+            font-size: 12px;
+            color: #b3b3b3;
+        }
+
+        .progress-track {
+            flex: 1;
+            height: 4px;
+            background-color: #535353;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-fill {
+            width: 30%;
+            height: 100%;
+            background-color: #b3b3b3;
+            border-radius: 2px;
+        }
+
+        .progress-fill:hover {
+            background-color: #1db954;
+        }
+
+        .additional-controls {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            width: 30%;
+            gap: 16px;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 125px;
+        }
+
+        .volume-track {
+            flex: 1;
+            height: 4px;
+            background-color: #535353;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .volume-fill {
+            width: 70%;
+            height: 100%;
+            background-color: #b3b3b3;
+            border-radius: 2px;
+        }
+
+        .volume-fill:hover {
+            background-color: #1db954;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fab fa-spotify" style="font-size: 40px; color: #1db954;"></i>
+            </div>
+            
+            <div class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-search"></i>
+                <span>Search</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-book"></i>
+                <span>Your Library</span>
+            </div>
+            
+            <div class="library">
+                <div class="nav-item">
+                    <i class="fas fa-plus-square"></i>
+                    <span>Create Playlist</span>
+                </div>
+                <div class="nav-item">
+                    <i class="fas fa-heart"></i>
+                    <span>Liked Songs</span>
+                </div>
+            </div>
+            
+            <div class="playlists">
+                <div class="playlist-item">My Playlist #1</div>
+                <div class="playlist-item">My Playlist #2</div>
+                <div class="playlist-item">My Playlist #3</div>
+                <div class="playlist-item">My Playlist #4</div>
+                <div class="playlist-item">My Playlist #5</div>
+                <div class="playlist-item">My Playlist #6</div>
+                <div class="playlist-item">My Playlist #7</div>
+                <div class="playlist-item">My Playlist #8</div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="topbar">
+                <div class="nav-arrows">
+                    <div class="nav-arrow">
+                        <i class="fas fa-chevron-left"></i>
+                    </div>
+                    <div class="nav-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+                <div class="user-menu">
+                    <div class="user-avatar">U</div>
+                    <span>Username</span>
+                    <i class="fas fa-caret-down"></i>
+                </div>
+            </div>
+            
+            <div class="greeting">
+                <h1>Good evening</h1>
+            </div>
+            
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-img" style="background-color: #1db954;"></div>
+                    <div class="card-title">Liked Songs</div>
+                    <div class="card-desc">Playlist • 123 songs</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #2d1b69;"></div>
+                    <div class="card-title">Discover Weekly</div>
+                    <div class="card-desc">Playlist • Spotify</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #ba5d07;"></div>
+                    <div class="card-title">Release Radar</div>
+                    <div class="card-desc">Playlist • Spotify</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #e13300;"></div>
+                    <div class="card-title">Top Hits</div>
+                    <div class="card-desc">Playlist • Spotify</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #477d95;"></div>
+                    <div class="card-title">Chill Vibes</div>
+                    <div class="card-desc">Playlist • Username</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #5f7b8c;"></div>
+                    <div class="card-title">Workout Mix</div>
+                    <div class="card-desc">Playlist • Username</div>
+                </div>
+            </div>
+            
+            <h2 class="section-title">Made for you</h2>
+            
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-img" style="background-color: #8d67ab;"></div>
+                    <div class="card-title">Daily Mix 1</div>
+                    <div class="card-desc">Made for you</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #ba5d07;"></div>
+                    <div class="card-title">Daily Mix 2</div>
+                    <div class="card-desc">Made for you</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #e8115b;"></div>
+                    <div class="card-title">Daily Mix 3</div>
+                    <div class="card-desc">Made for you</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #148a08;"></div>
+                    <div class="card-title">Daily Mix 4</div>
+                    <div class="card-desc">Made for you</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #f037a5;"></div>
+                    <div class="card-title">Daily Mix 5</div>
+                    <div class="card-desc">Made for you</div>
+                </div>
+            </div>
+            
+            <h2 class="section-title">Recently played</h2>
+            
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-img" style="background-color: #1e3264;"></div>
+                    <div class="card-title">Popular Album</div>
+                    <div class="card-desc">Artist Name</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #bc5900;"></div>
+                    <div class="card-title">Hot Hits</div>
+                    <div class="card-desc">Various Artists</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #e13300;"></div>
+                    <div class="card-title">Rock Classics</div>
+                    <div class="card-desc">Playlist • Spotify</div>
+                </div>
+                <div class="card">
+                    <div class="card-img" style="background-color: #477d95;"></div>
+                    <div class="card-title">Indie Mix</div>
+                    <div class="card-desc">Playlist • Spotify</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Player -->
+    <div class="player">
+        <div class="now-playing">
+            <div class="track-image" style="background-color: #1db954;"></div>
+            <div class="track-info">
+                <div class="track-name">Song Title</div>
+                <div class="artist-name">Artist Name</div>
+            </div>
+            <i class="fas fa-heart control-button" style="margin-left: 16px;"></i>
+        </div>
+        
+        <div class="player-controls">
+            <div class="control-buttons">
+                <i class="fas fa-random control-button"></i>
+                <i class="fas fa-step-backward control-button"></i>
+                <i class="fas fa-play control-button play-pause"></i>
+                <i class="fas fa-step-forward control-button"></i>
+                <i class="fas fa-repeat control-button"></i>
+            </div>
+            <div class="progress-bar">
+                <span>1:25</span>
+                <div class="progress-track">
+                    <div class="progress-fill"></div>
+                </div>
+                <span>3:45</span>
+            </div>
+        </div>
+        
+        <div class="additional-controls">
+            <i class="fas fa-list control-button"></i>
+            <i class="fas fa-laptop control-button"></i>
+            <div class="volume-control">
+                <i class="fas fa-volume-up control-button"></i>
+                <div class="volume-track">
+                    <div class="volume-fill"></div>
+                </div
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>

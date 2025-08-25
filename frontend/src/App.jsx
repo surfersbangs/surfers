@@ -1668,6 +1668,17 @@ function SurfersApp() {
     (t || "").replace(/^\s*index\.html\s*:?\s*$/gim, "");
   const stripGeneratedCodeFromChat = (t) =>
     stripIndexHtmlMention(stripHtmlDoc(stripFenced(t)));
+  // --- NEW: auto-close unbalanced code fences ---
+function safeWrapCode(text) {
+  if (!text) return "";
+  const count = (text.match(/```/g) || []).length;
+  // If odd → missing closing fence → add it
+  if (count % 2 !== 0) {
+    return text + "\n```";
+  }
+  return text;
+}
+
 
   // --- NEW: sticky action dock targets the latest assistant message
   const lastAssistantId = (() => {

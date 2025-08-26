@@ -9,3 +9,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+.prompt-textarea {
+  scrollbar-width: thin;
+  scrollbar-color: #b8b8b8 transparent;
+
+}

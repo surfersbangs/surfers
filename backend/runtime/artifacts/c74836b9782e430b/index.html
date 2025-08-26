@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sliding Puzzle Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .puzzle-container {
+            display: grid;
+            grid-template-columns: repeat(4, 80px);
+            grid-template-rows: repeat(4, 80px);
+            gap: 4px;
+            background-color: #ccc;
+            padding: 4px;
+            border-radius: 8px;
+        }
+        
+        .tile {
+            width: 80px;
+            height: 80px;
+            background-color: #3498db;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: transform 0.2s;
+        }
+        
+        .tile:hover {
+            transform: scale(1.02);
+        }
+        
+        .empty {
+            background-color: transparent;
+            cursor: default;
+        }
+        
+        .empty:hover {
+            transform: none;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #27ae60;
+        }
+        
+        .win-message {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #27ae60;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sliding Puzzle</h1>
+    <div class="puzzle-container" id="puzzle"></div>
+    <div class="controls">
+        <button id="shuffle-btn">Shuffle</button>
+        <button id="reset-btn">Reset</button>
+    </div>
+    <div class="win-message" id="win-message">You Win! 🎉</div>
+
+    <script>
+        const puzzleContainer = document.getElementById('puzzle');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const winMessage = document.getElementById('win-message');
+        
+        let tiles = [];
+        let emptyIndex = 15; // Last position is empty initially
+        
+        // Initialize the puzzle
+        function initPuzzle() {
+            puzzleContainer.innerHTML = '';
+            tiles = [];
+            
+            // Create tiles 1-15
+            for (let i = 0; i < 15; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.textContent = i + 1;
+                tile.dataset.index = i;
+                tile.addEventListener('click', handleTileClick);
+                puzzleContainer.appendChild(tile);
+                tiles.push(tile);
+            }
+            
+            // Create empty space
+            const emptyTile = document.createElement('div');
+            emptyTile.className = 'tile empty';
+            puzzleContainer.appendChild(emptyTile);
+            tiles.push(emptyTile);
+            
+            winMessage.style.display = 'none';
+        }
+        
+        // Check if puzzle is solved
+        function checkWin() {
+            for (let i = 0; i < 15; i++) {
+                if (parseInt(tiles[i].textContent) !== i + 1) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // Handle tile click
+        function handleTileClick(e) {
+            const clickedIndex = parseInt(e.target.dataset.index);
+            const row = Math.floor(clickedIndex / 4);
+            const col = clickedIndex % 4;
+            const emptyRow = Math.floor(emptyIndex / 4);
+            const emptyCol = emptyIndex % 4;
+            
+            // Check if clicked tile is adjacent to empty space
+            if ((Math.abs(row - emptyRow) === 1 && col === emptyCol) || 
+                (Math.abs(col - emptyCol) === 1 && row === emptyRow)) {
+                
+                // Swap positions
+                [tiles[clickedIndex], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[clickedIndex]];
+                
+                // Update data-index attributes
+                tiles[clickedIndex].dataset.index = clickedIndex;
+                tiles[emptyIndex].dataset.index = emptyIndex;
+                
+                emptyIndex = clickedIndex;
+                
+                // Check for win
+                if (checkWin()) {
+                    winMessage.style.display = 'block';
+                }
+            }
+        }
+        
+        // Shuffle the puzzle
+        function shufflePuzzle() {
+            // Simple shuffle by making random valid moves
+            for (let i = 0; i < 1000; i++) {
+                const possibleMoves = [];
+                const emptyRow = Math.floor(emptyIndex / 4);
+                const emptyCol = emptyIndex % 4;
+                
+                // Check all four directions
+                if (emptyRow > 0) possibleMoves.push(emptyIndex - 4); // Up
+                if (emptyRow < 3) possibleMoves.push(emptyIndex + 4); // Down
+                if (emptyCol > 0) possibleMoves.push(emptyIndex - 1); // Left
+                if (emptyCol < 3) possibleMoves.push(emptyIndex + 1); // Right
+                
+                // Randomly select a move
+                const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                
+                // Swap with empty space
+                [tiles[emptyIndex], tiles[randomMove]] = [tiles[randomMove], tiles[emptyIndex]];
+                tiles[emptyIndex].dataset.index = emptyIndex;
+                tiles[randomMove].dataset.index = randomMove;
+                
+                emptyIndex = randomMove;
+            }
+            
+            winMessage.style.display = 'none';
+        }
+        
+        // Reset to solved state
+        function resetPuzzle() {
+            initPuzzle();
+        }
+        
+        // Event listeners
+        shuffleBtn.addEventListener('click', shufflePuzzle);
+        resetBtn.addEventListener('click', resetPuzzle);
+        
+        // Initialize the game
+        initPuzzle();
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

@@ -4,8 +4,6 @@ import {
   onAuthStateChanged,
   signOut,
   signInWithPopup,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
 } from "firebase/auth";
 import { auth, googleProvider } from "./firebase";
 
@@ -80,7 +78,7 @@ const Container = ({ children, className = "" }) => (
 );
 
 const LogoSmall = ({ className = "h-5 w-5" }) => (
-  <img src="/logo.png" alt="surfers logo" className={className} />
+  <img src="/logowhite.png" alt="surfers logo" className={className} />
 );
 
 const LogoLarge = ({ className = "h-24 w-24" }) => <LogoSmall className={className} />;
@@ -197,13 +195,11 @@ function CodeBlock({ inline, className, children, ...props }) {
   );
 }
 
-
 function Markdown({ children }) {
   const text = typeof children === "string" ? children : String(children ?? "");
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      
       components={{
         a: ({ node, ...props }) => (
           <a
@@ -240,7 +236,6 @@ function Markdown({ children }) {
       }}
     >
       {text}
-      
     </ReactMarkdown>
   );
 }
@@ -732,7 +727,7 @@ const Overlay = ({ children, onClose }) => (
 const ViewModal = ({ open, url, onClose }) => {
   if (!open) return null;
   const label = (() => {
-    try {
+       try {
       const u = new URL(url);
       return `${u.host}${u.pathname}`;
     } catch {
@@ -810,14 +805,11 @@ const CodeModal = ({ open, files = [], lang, code, onClose }) => {
         </div>
         <div className="w-full h-[calc(100%-40px)] overflow-auto">
           {shown?.code ? (
-           <div className="p-4 h-full overflow-y-auto">
-  <Markdown>
-    {`\`\`\`${shown.lang || ""}\n${shown.code}\n\`\`\``}
-  </Markdown>
-</div>
-
-
-
+            <div className="p-4 h-full overflow-y-auto">
+              <Markdown>
+                {`\`\`\`${shown.lang || ""}\n${shown.code}\n\`\`\``}
+              </Markdown>
+            </div>
           ) : (
             <div className="p-6 text-[#c7cbd2]">No code found in this message.</div>
           )}
@@ -1008,14 +1000,7 @@ function SurfersApp() {
   const [showAttach, setShowAttach] = useState(false);
 
   // auth
-  const [authOpen, setAuthOpen] = useState(false);
   const [user, setUser] = useState(null);
-
-  // phone otp
-  const [phone, setPhone] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [confirmation, setConfirmation] = useState(null);
 
   // chat
   const [messages, setMessages] = useState([]); // {id, role, content}
@@ -1086,13 +1071,13 @@ function SurfersApp() {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
   // --- subdomain base (prod via env; local falls back to lvh.me trick)
-const BASE_DOMAIN =
-  import.meta.env.VITE_BASE_DOMAIN ||
-  (typeof window !== "undefined" && window.location.hostname.endsWith("lvh.me")
-    ? "lvh.me"
-    : "surfers.co.in");
+  const BASE_DOMAIN =
+    import.meta.env.VITE_BASE_DOMAIN ||
+    (typeof window !== "undefined" && window.location.hostname.endsWith("lvh.me")
+      ? "lvh.me"
+      : "surfers.co.in");
 
-const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
+  const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
 
   const makeAbsoluteUrl = (u) => {
     try {
@@ -1169,7 +1154,6 @@ const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
       const imgs = pendingImages;
       setPendingPrompt("");
       setPendingImages([]);
-      setAuthOpen(false);
       setView("chat");
       setTimeout(() => {
         sendMessageStream(toSend, imgs);
@@ -1185,23 +1169,11 @@ const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
     if (view === "home") stopStreaming();
   }, [view]);
 
-  const resetPhoneAuth = () => {
-    setPhone("");
-    setOtp("");
-    setOtpSent(false);
-    setConfirmation(null);
-    try {
-      if (typeof window !== "undefined" && window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear?.();
-        window.recaptchaVerifier = null;
-      }
-    } catch {}
-  };
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      resetPhoneAuth();
-      setAuthOpen(false);
+      // if user triggered from auth page without a pending prompt, go home
+      if (!pendingPrompt && view === "auth") setView("home");
     } catch (err) {
       console.error(err);
     }
@@ -1212,41 +1184,8 @@ const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
     } catch (err) {
       console.error(err);
     } finally {
-      resetPhoneAuth();
-      setAuthOpen(false);
       clearConversationState();
       setView("home");
-    }
-  };
-  const sendOtp = async () => {
-    try {
-      if (typeof window !== "undefined" && !window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-          size: "invisible",
-        });
-      }
-      const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        phone,
-        window.recaptchaVerifier
-      );
-      setConfirmation(confirmationResult);
-      setOtpSent(true);
-    } catch (err) {
-      console.error("OTP error:", err);
-      alert("Failed to send OTP. Format: +91xxxxxxxxxx");
-    }
-  };
-  const verifyOtp = async () => {
-    try {
-      if (confirmation) {
-        await confirmation.confirm(otp);
-        resetPhoneAuth();
-        setAuthOpen(false);
-      }
-    } catch (err) {
-      console.error("OTP verify error:", err);
-      alert("Invalid OTP");
     }
   };
 
@@ -1538,7 +1477,7 @@ const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
       setPrompt("");
       setImages([]);
       setFigmas([]);
-      setAuthOpen(true);
+      setView("auth");
       return;
     }
 
@@ -1563,7 +1502,7 @@ const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
       setChatInput("");
       setChatImages([]);
       setChatFigmas([]);
-      setAuthOpen(true);
+      setView("auth");
       return;
     }
 
@@ -1678,16 +1617,15 @@ const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
   const stripGeneratedCodeFromChat = (t) =>
     stripIndexHtmlMention(stripHtmlDoc(stripFenced(t)));
   // --- NEW: auto-close unbalanced code fences ---
-function safeWrapCode(text) {
-  if (!text) return "";
-  const count = (text.match(/```/g) || []).length;
-  // If odd → missing closing fence → add it
-  if (count % 2 !== 0) {
-    return text + "\n```";
+  function safeWrapCode(text) {
+    if (!text) return "";
+    const count = (text.match(/```/g) || []).length;
+    // If odd → missing closing fence → add it
+    if (count % 2 !== 0) {
+      return text + "\n```";
+    }
+    return text;
   }
-  return text;
-}
-
 
   // --- NEW: sticky action dock targets the latest assistant message
   const lastAssistantId = (() => {
@@ -1779,155 +1717,216 @@ function safeWrapCode(text) {
 
   return (
     <div
-  className="relative min-h-screen text-[#EDEDED] font-wix madefor text flex flex-col"
-  style={{ scrollbarGutter: "stable" }}
->
-
-
-  {view === "home" && (
-  <div
-    aria-hidden="true"
-    className="fixed inset-0 z-0"
-    style={{
-      backgroundImage: "url('/background.jpg')",
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-    }}
-  />
-)}
-
+      className="relative min-h-screen text-[#EDEDED] font-wix madefor text flex flex-col"
+      style={{ scrollbarGutter: "stable" }}
+    >
+      {view === "home" && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-0 "
+          style={{
+            backgroundImage: "url('/background.jpg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+      )}
 
       {/* ===== TOP BAR (home) ===== */}
       {view === "home" && (
-  <header className="relative z-10 pt-5">
-    <Container>
-      <div className="text-center">
-        <h1 className=" text-white font-extrabold font-wixmadefor leading-[0.8]
-                       text-[40px] sm:text-[56px] md:text-[70px]">
-          surfers<br/> codes for you.<br className="hidden sm:block" />cool.
-        </h1>
+        <header className="relative z-10 pt-5">
+          <Container>
+            <div className="text-center">
+              <h1 className=" text-white font-bold font-wixmadefor leading-[0.8]
+                       text-[55px] sm:text-[56px] md:text-[70px]">
+                surfers<br/> codes for you.<br className="sm:block" />yeah.
+              </h1>
 
-        <div className="mt-14 flex justify-center">
-          {user ? (
-            <button
-              onClick={handleLogout}
-              className="px-15 py-1.5 rounded-full border border-white/80 text-white
+              <div className="mt-14 flex justify-center">
+                {user ? (
+                  <button
+                    onClick={handleLogout}
+                    className="px-15 py-1.5 rounded-full border border-white/80 text-white
                          hover:bg-white hover:text-black transition"
-            >
-              log out
-            </button>
-          ) : (
-            <button
-              onClick={() => setAuthOpen(true)}
-              className="px-15 py-1.5 rounded-full border border-white/80 text-white
+                  >
+                    log out
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setView("auth")}
+                    className="px-15 py-1.5 rounded-full border border-white/80 text-white
                          hover:bg-white hover:text-black transition"
-            >
-              sign up / log in
-            </button>
-          )}
-        </div>
-      </div>
-    </Container>
-  </header>
-)}
-
+                  >
+                    sign up / log in
+                  </button>
+                )}
+              </div>
+            </div>
+          </Container>
+        </header>
+      )}
 
       {/* ===== HOME ===== */}
       {view === "home" && (
         <main className="relative z-10 flex-1">
-  {/* subtle dark overlay so white text stays readable */}
-  <div className="absolute inset-0  pointer-events-none" />
+          {/* subtle dark overlay so white text stays readable */}
+          <div className="absolute inset-0  pointer-events-none" />
 
           <Container className="flex flex-col items-center justify-center min-h-[72vh]">
             <LogoLarge className="h-[100px] w-[95px] mb-5" />
-           <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-[560px] mx-auto">
-  <div
-    className="relative bg-[#FFFFFF] border-[#2A2A2A] rounded-[32px]
+            <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-[560px] mx-auto">
+              <div
+                className="relative bg-[#FFFFFF] border-[#2A2A2A] rounded-[32px]
                px-[25px] pt-[15px] pb-[65px]
                shadow-[0_12px_36px_rgba(0,0,0,0.45)]"
-  >
-    
-    {!prompt && (
-      <div
-        className="pointer-events-none absolute left-[25px] right-[25px] top-32px]
+              >
+                {!prompt && (
+                  <div
+                    className="pointer-events-none absolute left-[25px] right-[25px] top-32px]
                    text-[18px] leading-[20px] text-[#191919] select-none"
-        aria-hidden="true"
-      >
-        {typewriter}
-      </div>
-    )}
+                    aria-hidden="true"
+                  >
+                    {typewriter}
+                  </div>
+                )}
 
-    {/* TEXTAREA — normal flow (NOT absolute), auto-grows then scrolls, breaks long strings */}
-    <textarea
-      ref={textareaRef}
-      rows={1}
-      value={prompt}
-      onChange={(e) => setPrompt(e.target.value)}
-      onInput={resizeTextarea}
-      autoFocus
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          formRef.current?.requestSubmit();
-        }
-      }}
-      className="w-full bg-transparent outline-none text-[18px]  leading-[20px]
+                {/* TEXTAREA — normal flow (NOT absolute), auto-grows then scrolls, breaks long strings */}
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onInput={resizeTextarea}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      formRef.current?.requestSubmit();
+                    }
+                  }}
+                  className="prompt-textarea w-full bg-transparent outline-none text-[18px]  leading-[20px]
                  text-[#191919] resize-none break-all"
-      style={{
-        maxHeight: `${MAX_TA_HEIGHT}px`,   // same cap as chat
-        overflowY: 'auto',                  // scroll when past the cap
-        overflowWrap: 'anywhere',           // prevent super-long tokens from spilling
-      }}
-      placeholder={prompt ? undefined : ''} // keeps iOS from overlaying a ghost placeholder
-    />
+                  style={{
+                    maxHeight: `${MAX_TA_HEIGHT}px`,   // same cap as chat
+                    overflowY: 'auto',                  // scroll when past the cap
+                    overflowWrap: 'anywhere',           // prevent super-long tokens from spilling
+                  }}
+                  placeholder={prompt ? undefined : ''} // keeps iOS from overlaying a ghost placeholder
+                />
 
-    {/* buttons pinned to the bottom of the card (same pattern as chat) */}
-    <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
-      <div className="relative" ref={attachRef}>
-        <button
-          type="button"
-          aria-label="attach file"
-          onClick={() => fileInputRef.current?.click()}
-          className="text-[#212121] text-[28px] leading-none transition-colors"
-        >
-          +
-        </button>
-      </div>
+                {/* buttons pinned to the bottom of the card (same pattern as chat) */}
+                <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
+                  <div className="relative" ref={attachRef}>
+                    <button
+                      type="button"
+                      aria-label="attach file"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-[#212121] text-[28px] leading-none transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
 
-      <button
-        type="submit"
-        aria-label="send"
-        disabled={loading}
-        className={`h-[32px] w-[32px] rounded-full text-[#FFFFFF] ${
-          loading ? "bg-[#2A2A2B] text-[#9AA0A6]" : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"
-        } flex text-[24px] items-center justify-center transition-colors`}
-      >
-        {loading ? "…" : "↑"}
-      </button>
-    </div>
-  </div>
+                  <button
+                    type="submit"
+                    aria-label="send"
+                    disabled={loading}
+                    className={`h-[32px] w-[32px] rounded-full text-[#FFFFFF] ${
+                      loading ? "bg-[#2A2A2B] text-[#9AA0A6]" : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"
+                    } flex text-[24px] items-center justify-center transition-colors`}
+                  >
+                    {loading ? "…" : "↑"}
+                  </button>
+                </div>
+              </div>
 
-  {code ? (
-    <div className="w-full max-w-[560px] mt-4">
-      <pre className="whitespace-pre-wrap text-[12px] leading-5 text-[#C9D1D9] bg-[#111214] border border-[#2A2A2A] rounded-[12px] p-4 overflow-x-auto">
-        {code}
-      </pre>
-    </div>
-  ) : null}
+              {code ? (
+                <div className="w-full max-w-[560px] mt-4">
+                  <pre className="whitespace-pre-wrap text-[12px] leading-5 text-[#C9D1D9] bg-[#111214] border border-[#2A2A2A] rounded-[12px] p-4 overflow-x-auto">
+                    {code}
+                  </pre>
+                </div>
+              ) : null}
 
-  <input
-    ref={fileInputRef}
-    type="file"
-    accept=".txt,.pdf,.doc,.docx,.md,.json,.js,.ts,.html,.css,.jsx,.tsx,.py,.java,.c,.cpp,.cs"
-    multiple
-    className="hidden"
-    onChange={onFilesPicked}
-  />
-</form>
-
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.pdf,.doc,.docx,.md,.json,.js,.ts,.html,.css,.jsx,.tsx,.py,.java,.c,.cpp,.cs"
+                multiple
+                className="hidden"
+                onChange={onFilesPicked}
+              />
+            </form>
           </Container>
         </main>
+      )}
+
+      {/* ===== AUTH (full page) ===== */}
+      {view === "auth" && (
+     
+
+        <>
+        <div
+  aria-hidden="true"
+  className="fixed inset-0 z-0 "
+  style={{
+    backgroundImage: "url('/background.jpg')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+  }}
+/>
+<div className="fixed inset-0 z-0 bg-black/55 " aria-hidden="true" />
+   
+
+          <header className="pt-4 ">
+            <Container>
+              <div className="relative h-[28px] flex items-center mb-12">
+                {/* back button (auth page) */}
+<button
+  onClick={() => setView("home")}
+  aria-label="back"
+  className="fixed top-5 left-5 z-10"
+>
+  <img src="/back.png" alt="back" className="h-4 w-4 rotate-315" />
+</button>
+
+              </div>
+            </Container>
+          </header>
+          
+<main className="relative z-10 lex fitems-center justify-center">
+          <main className="flex-1">
+            <Container className="min-h-[70vh] flex flex-col items-center justify-center text-center leading-[0.8]">
+              <h1 className="text-[#FFFFFF] text-[32px] sm:text-[39px] font-bold mb-1">
+                account?
+              </h1>
+              <div className="text-[#FFFFFF] text-[48px] sm:text-[58px] font-bold mt-0.5 mb-2">
+                create.<br/> </div>
+                <div className="text-[#FFFFFF] text-[65px] sm:text-[78px] font-bold mt-0.5 mb-7">
+                log in.
+              </div>
+
+              <button
+                onClick={handleGoogleLogin}
+                className="mt-6.5 h-10.5 px-20 rounded-full bg-white text-[16.5px] font-[500] text-[#484848] inline-flex items-center gap-3"
+              >
+                 <img
+                   src="/google.png"
+                   alt="Google"
+                   className="h-5 w-5"
+                 />
+  continue with Google
+              </button>
+
+              <div className="mt-3 text-sm text-[#C7C7C7]">
+                issues logging in? <span className="cursor-pointer text-[#FFFFFF]">get to us</span>
+              </div>
+            </Container>
+          </main>
+          </main>
+        </>
       )}
 
       {/* ===== CHAT PAGE ===== */}
@@ -1948,7 +1947,7 @@ function safeWrapCode(text) {
                 <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
                   <LogoSmall className="h-[18px] w-[18px]" />
                 </div>
-                <div className="ml-auto cursor-pointer" onClick={() => setAuthOpen(true)}>
+                <div className="ml-auto cursor-pointer" onClick={() => setView("auth")}>
                   <ProfileIcon className="h-[18px] w-[18px]" />
                 </div>
               </div>
@@ -2068,32 +2067,31 @@ function safeWrapCode(text) {
                     </svg>
                   </p>
                   <div className="flex w-full max-w-[560px] mx-auto gap-3">
-  <button
-    type="button"
-    onClick={() => openCodeModal(lastAssistantId)}
-    disabled={!lastAssistantId}
-    className="flex-1 h-10 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
-  >
-    code
-  </button>
-  <button
-    type="button"
-    onClick={() => openViewModal(lastAssistantId)}
-    disabled={!lastAssistantId}
-    className="flex-1 h-10 rounded-full bg-white text-black"
-  >
-    view
-  </button>
-  <button
-    type="button"
-    onClick={() => openLiveModal(lastAssistantId)}
-    disabled={!lastAssistantId}
-    className="flex-1 h-10 rounded-full bg-[#EF3A3A] hover:bg-[#ff3d3d] text-white"
-  >
-    go live
-  </button>
-</div>
-
+                    <button
+                      type="button"
+                      onClick={() => openCodeModal(lastAssistantId)}
+                      disabled={!lastAssistantId}
+                      className="flex-1 h-10 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
+                    >
+                      code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openViewModal(lastAssistantId)}
+                      disabled={!lastAssistantId}
+                      className="flex-1 h-10 rounded-full bg-white text-black"
+                    >
+                      view
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openLiveModal(lastAssistantId)}
+                      disabled={!lastAssistantId}
+                      className="flex-1 h-10 rounded-full bg-[#EF3A3A] hover:bg-[#ff3d3d] text-white"
+                    >
+                      go live
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -2123,7 +2121,7 @@ function safeWrapCode(text) {
                       {chatFigmas.map((url, i) => (
                         <div
                           key={`cfig-${i}`}
-                          className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]"
+                          className="group flex itemscenter gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]"
                           title={url}
                         >
                           <FigmaIcon />
@@ -2212,106 +2210,14 @@ function safeWrapCode(text) {
       )}
 
       {/* ===== FOOTER ===== */}
-      {/* ===== FOOTER ===== */}
-{view === "home" && (
-  <footer className="relative z-10 pb-[22px]">
-    <Container>
-      <p className="mx-auto text-center text-[14.5px] font-[400] leading-[20px] text-[#FFFFFF] font-wixmadefor">
-        your ideas live in seconds. surfers codes anything better. faster. • 2025 © surfers.
-      </p>
-    </Container>
-  </footer>
-)}
-
-
-      {/* ===== AUTH LIGHTBOX ===== */}
-      {authOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/90 z-[90]">
-          <div className="w-[400px] text-center p-8 rounded-xl bg-black border border-gray-800">
-            <h1 className="text-3xl font-bold">account.</h1>
-            <p className="text-gray-400 mb-6">create or log in.</p>
-
-            {user ? (
-              <>
-                <p className="mb-4">
-                  Welcome, {user.displayName || user.phoneNumber || user.email}
-                </p>
-                <button
-                  onClick={handleLogout}
-                  className="w-full py-2 bg-[#FFFFFF] text-[#191919] font-medium rounded-lg"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleGoogleLogin}
-                  className="bg-[#1a73e8] text-white font-medium w-full py-2 rounded-lg flex items-center justify-center gap-2"
-                >
-                  <span className="font-bold">G</span> continue with Google
-                </button>
-
-                <div className="my-4 flex items-center">
-                  <div className="flex-grow border-t border-gray-600"></div>
-                  <span className="px-2 text-gray-400">or</span>
-                  <div className="flex-grow border-t border-gray-600"></div>
-                </div>
-
-                {!otpSent ? (
-                  <>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91 9876543210"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      onClick={sendOtp}
-                      className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg"
-                    >
-                      send OTP
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="enter OTP"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-white text-[#232323] font-medium text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      onClick={verifyOtp}
-                      className="w-full mt-3 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg"
-                    >
-                      verify OTP
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-
-            <div id="recaptcha-container"></div>
-
-            <p className="text-gray-400 text-xs mt-6">
-              privacy policy • terms &amp; use • type it.<br />
-              your ideas live in seconds. surfers codes anything better. faster.<br />
-              © 2025 surfers
+      {view === "home" && (
+        <footer className="relative z-10 pb-[22px]">
+          <Container>
+            <p className="mx-auto text-center text-[14.5px] font-[400] leading-[20px] text-[#FFFFFF] font-wixmadefor">
+              your ideas live in seconds. surfers codes anything better. faster. • 2025 © surfers.
             </p>
-
-            <button
-              onClick={() => {
-                setAuthOpen(false);
-              }}
-              className="mt-4 text-sm text-gray-400 underline"
-            >
-              close
-            </button>
-          </div>
-        </div>
+          </Container>
+        </footer>
       )}
 
       {/* ===== NEW MODALS (only one ever renders at once) ===== */}
@@ -2323,22 +2229,21 @@ function safeWrapCode(text) {
         onClose={closeModal}
       />
       <ViewModal open={modal.type === "view"} url={modal.url} onClose={closeModal} />
-     <LiveModal
-  open={modal.type === "live"}
-  onClose={closeModal}
-  slug={liveSlug}
-  setSlug={setLiveSlug}
-  busy={liveBusy}
-  note={modal.note}
-  onPublish={publishCurrent}
-  onCheck={checkAvailability}
-  avail={liveAvail}
-  onCopy={copySlugFull}
-  copied={copiedSlug}
-  liveUrl={liveResultUrl}
-  baseSuffix={SUBDOMAIN_SUFFIX}   // ✅ added
-/>
-
+      <LiveModal
+        open={modal.type === "live"}
+        onClose={closeModal}
+        slug={liveSlug}
+        setSlug={setLiveSlug}
+        busy={liveBusy}
+        note={modal.note}
+        onPublish={publishCurrent}
+        onCheck={checkAvailability}
+        avail={liveAvail}
+        onCopy={copySlugFull}
+        copied={copiedSlug}
+        liveUrl={liveResultUrl}
+        baseSuffix={SUBDOMAIN_SUFFIX}
+      />
     </div>
   );
 }

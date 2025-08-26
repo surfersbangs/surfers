@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<canvas id="game" width="400" height="400"></canvas>
+<script>
+const c=document.getElementById("game").getContext("2d"),s=100,b=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0],e=15;
+function d(){c.clearRect(0,0,400,400);for(let i=0;i<16;i++){if(b[i]){c.fillStyle="#3498db";c.fillRect((i%4)*s,Math.floor(i/4)*s,s-2,s-2);c.fillStyle="white";c.font="40px Arial";c.fillText(b[i],(i%4)*s+35,Math.floor(i/4)*s+60)}}}
+function m(x,y){const p=Math.floor(x/s)+4*Math.floor(y/s),e=b.indexOf(0),d=Math.abs(p%4-e%4)+Math.abs(Math.floor(p/4)-Math.floor(e/4));if(d===1)[b[p],b[e]]=[b[e],b[p]];d();if(b.join()===[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0].join())alert("You won!")}
+d();document.getElementById("game").onclick=e=>m(e.offsetX,e.offsetY);
+</script>
+```
+
+Click on tiles adjacent to the empty space to slide them. Arrange numbers 1-15 in order to win!
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>

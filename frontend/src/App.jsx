@@ -1779,38 +1779,70 @@ function safeWrapCode(text) {
 
   return (
     <div
-      className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-wix flex flex-col"
-      style={{ scrollbarGutter: "stable" }}
-    >
+  className="relative min-h-screen text-[#EDEDED] font-wix madefor text flex flex-col"
+  style={{ scrollbarGutter: "stable" }}
+>
+
+
+  {view === "home" && (
+  <div
+    aria-hidden="true"
+    className="fixed inset-0 z-0"
+    style={{
+      backgroundImage: "url('/background.jpg')",
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    }}
+  />
+)}
+
+
       {/* ===== TOP BAR (home) ===== */}
       {view === "home" && (
-        <header className="pt-4">
-          <Container>
-            <div className="relative h-[28px] flex items-center">
-              <LogoSmall className="h-[18px] w-[18px]" />
-              <nav className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex gap-[36px] text-[14px] leading-[20px] text-[#D1D5DB]">
-                <a href="#" className="hover:text-[#A8ADB5]">
-                  community
-                </a>
-                <a href="#" className="hover:text-[#A8ADB5]">
-                  developers
-                </a>
-              </nav>
-              <div className="ml-auto cursor-pointer" onClick={() => { setAuthOpen(true); }}>
-                <ProfileIcon className="h-[20px] w-[20px]" />
-              </div>
-            </div>
-          </Container>
-        </header>
-      )}
+  <header className="relative z-10 pt-5">
+    <Container>
+      <div className="text-center">
+        <h1 className="text-white font-extrabold  leading-[0.85]
+                       text-[40px] sm:text-[56px] md:text-[65px]">
+          surfers<br/> codes anything for<br/> you.<br className="hidden sm:block" /> yeah. 
+        </h1> <br />
+
+        <div className="mt-6 flex justify-center">
+          {user ? (
+            <button
+              onClick={handleLogout}
+              className="px-15 py-1.5 rounded-full border border-white/80 text-white
+                         hover:bg-white hover:text-black transition"
+            >
+              log out
+            </button>
+          ) : (
+            <button
+              onClick={() => setAuthOpen(true)}
+              className="px-15 py-1.5 rounded-full border border-white/80 text-white
+                         hover:bg-white hover:text-black transition"
+            >
+              sign up / log in
+            </button>
+          )}
+        </div>
+      </div>
+    </Container>
+  </header>
+)}
+
 
       {/* ===== HOME ===== */}
       {view === "home" && (
-        <main className="flex-1">
+        <main className="relative z-10 flex-1">
+  {/* subtle dark overlay so white text stays readable */}
+  <div className="absolute inset-0  pointer-events-none" />
+
           <Container className="flex flex-col items-center justify-center min-h-[72vh]">
-            <LogoLarge className="h-[88px] w-[88px] mb-6" />
+            <LogoLarge className="h-[100px] w-[95px] mb-5" />
             <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-[560px] mx-auto">
-              <div className="relative bg-[#121214] border-[0.5px] border-[#2A2A2A] rounded-[28px] px-[18px] pt-[12px] pb-[40px] shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
+              <div className="relative bg-[#FFFFFF] border-[#2A2A2A] rounded-[32px] px-[15px] pt-[35px] pb-[65px] shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
                 {(images.length > 0 || figmas.length > 0) && (
                   <div className="mb-2 flex flex-wrap gap-2">
                     {images.map((img, i) => (
@@ -1850,7 +1882,7 @@ function safeWrapCode(text) {
 
                 {!prompt && (
                   <div
-                    className="pointer-events-none absolute left-[18px] right-[18px] top-[12px] text-[16px] leading-[20px] text-[#9AA0A6] select-none"
+                    className="pointer-events-none absolute left-[25px] right-[18px] top-[16px] text-[18px] leading-[20px] text-[#191919] select-none"
                     aria-hidden="true"
                   >
                     {typewriter}
@@ -1870,7 +1902,7 @@ function safeWrapCode(text) {
                       formRef.current?.requestSubmit();
                     }
                   }}
-                  className="w-full bg-transparent outline-none text-[14px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
+                  className="w-full bg-transparent outline-none absolute left-[25px] right-[18px] top-[16px] text-[18px] leading-[20px] text-[#191919] select-none resize-none"
                   style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
                 />
 
@@ -1908,7 +1940,7 @@ function safeWrapCode(text) {
                     type="submit"
                     aria-label="send"
                     disabled={loading}
-                    className={`h-[28px] w-[28px] rounded-full ${
+                    className={`h-[32px] w-[32px] rounded-full ${
                       loading
                         ? "bg-[#2A2A2B] text-[#9AA0A6]"
                         : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"
@@ -2223,7 +2255,7 @@ function safeWrapCode(text) {
 
       {/* ===== FOOTER ===== */}
       {view === "home" && (
-        <footer className="pb-[22px]">
+        <footer className="relative z-10 pb-[22px]">
           <Container>
             <p className="mx-auto text-center text-[13.8px] leading-[18px] text-[#9AA0A6]">
               privacy policy  •  terms &amp; use  •  type it. see it. launch it. —— your ideas

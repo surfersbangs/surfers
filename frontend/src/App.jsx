@@ -1803,12 +1803,12 @@ function safeWrapCode(text) {
   <header className="relative z-10 pt-5">
     <Container>
       <div className="text-center">
-        <h1 className="text-white font-extrabold  leading-[0.85]
-                       text-[40px] sm:text-[56px] md:text-[65px]">
-          surfers<br/> codes anything for<br/> you.<br className="hidden sm:block" /> yeah. 
-        </h1> <br />
+        <h1 className=" text-white font-extrabold font-wixmadefor leading-[0.8]
+                       text-[40px] sm:text-[56px] md:text-[70px]">
+          surfers<br/> codes for you.<br className="hidden sm:block" />cool.
+        </h1>
 
-        <div className="mt-6 flex justify-center">
+        <div className="mt-14 flex justify-center">
           {user ? (
             <button
               onClick={handleLogout}
@@ -1841,133 +1841,91 @@ function safeWrapCode(text) {
 
           <Container className="flex flex-col items-center justify-center min-h-[72vh]">
             <LogoLarge className="h-[100px] w-[95px] mb-5" />
-            <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-[560px] mx-auto">
-              <div className="relative bg-[#FFFFFF] border-[#2A2A2A] rounded-[32px] px-[15px] pt-[35px] pb-[65px] shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
-                {(images.length > 0 || figmas.length > 0) && (
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {images.map((img, i) => (
-                      <div
-                        key={`img-${i}`}
-                        className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]"
-                      >
-                        <img src={img.url} alt={img.name} className="h-full w-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(i)}
-                          className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                    {figmas.map((url, i) => (
-                      <div
-                        key={`fig-${i}`}
-                        className="group flex items-center gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]"
-                        title={url}
-                      >
-                        <FigmaIcon />
-                        <span className="max-w-[180px] truncate">{url}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeFigma(i)}
-                          className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] flex items-center justify-center"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+           <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-[560px] mx-auto">
+  <div
+    className="relative bg-[#FFFFFF] border-[#2A2A2A] rounded-[32px]
+               px-[25px] pt-[15px] pb-[65px]
+               shadow-[0_12px_36px_rgba(0,0,0,0.45)]"
+  >
+    
+    {!prompt && (
+      <div
+        className="pointer-events-none absolute left-[25px] right-[25px] top-32px]
+                   text-[18px] leading-[20px] text-[#191919] select-none"
+        aria-hidden="true"
+      >
+        {typewriter}
+      </div>
+    )}
 
-                {!prompt && (
-                  <div
-                    className="pointer-events-none absolute left-[25px] right-[18px] top-[16px] text-[18px] leading-[20px] text-[#191919] select-none"
-                    aria-hidden="true"
-                  >
-                    {typewriter}
-                  </div>
-                )}
+    {/* TEXTAREA — normal flow (NOT absolute), auto-grows then scrolls, breaks long strings */}
+    <textarea
+      ref={textareaRef}
+      rows={1}
+      value={prompt}
+      onChange={(e) => setPrompt(e.target.value)}
+      onInput={resizeTextarea}
+      autoFocus
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          formRef.current?.requestSubmit();
+        }
+      }}
+      className="w-full bg-transparent outline-none text-[18px]  leading-[20px]
+                 text-[#191919] resize-none break-all"
+      style={{
+        maxHeight: `${MAX_TA_HEIGHT}px`,   // same cap as chat
+        overflowY: 'auto',                  // scroll when past the cap
+        overflowWrap: 'anywhere',           // prevent super-long tokens from spilling
+      }}
+      placeholder={prompt ? undefined : ''} // keeps iOS from overlaying a ghost placeholder
+    />
 
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onInput={resizeTextarea}
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      formRef.current?.requestSubmit();
-                    }
-                  }}
-                  className="w-full bg-transparent outline-none absolute left-[25px] right-[18px] top-[16px] text-[18px] leading-[20px] text-[#191919] select-none resize-none"
-                  style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
-                />
+    {/* buttons pinned to the bottom of the card (same pattern as chat) */}
+    <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
+      <div className="relative" ref={attachRef}>
+        <button
+          type="button"
+          aria-label="attach file"
+          onClick={() => fileInputRef.current?.click()}
+          className="text-[#212121] text-[28px] leading-none transition-colors"
+        >
+          +
+        </button>
+      </div>
 
-                <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
-                  <div className="relative" ref={attachRef}>
-                    <button
-                      type="button"
-                      aria-label="add"
-                      onClick={() => setShowAttach((v) => !v)}
-                      className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors"
-                    >
-                      +
-                    </button>
-                    {showAttach && (
-                      <div className="absolute -top-2 left-0 -translate-y-full w-[180px] rounded-[12px] bg-white text-black border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-2">
-                        <button
-                          type="button"
-                          onClick={onAddImageClick}
-                          className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
-                        >
-                          <ImageIcon /> <span className="text-[14px] text-neutral-800">add image</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={onAddFigmaClick}
-                          className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
-                        >
-                          <FigmaIcon /> <span className="text-[14px] text-neutral-800">add figma</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+      <button
+        type="submit"
+        aria-label="send"
+        disabled={loading}
+        className={`h-[32px] w-[32px] rounded-full text-[#FFFFFF] ${
+          loading ? "bg-[#2A2A2B] text-[#9AA0A6]" : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"
+        } flex text-[24px] items-center justify-center transition-colors`}
+      >
+        {loading ? "…" : "↑"}
+      </button>
+    </div>
+  </div>
 
-                  <button
-                    type="submit"
-                    aria-label="send"
-                    disabled={loading}
-                    className={`h-[32px] w-[32px] rounded-full ${
-                      loading
-                        ? "bg-[#2A2A2B] text-[#9AA0A6]"
-                        : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"
-                    } flex items-center justify-center transition-colors`}
-                  >
-                    {loading ? "…" : "↑"}
-                  </button>
-                </div>
-              </div>
+  {code ? (
+    <div className="w-full max-w-[560px] mt-4">
+      <pre className="whitespace-pre-wrap text-[12px] leading-5 text-[#C9D1D9] bg-[#111214] border border-[#2A2A2A] rounded-[12px] p-4 overflow-x-auto">
+        {code}
+      </pre>
+    </div>
+  ) : null}
 
-              {code ? (
-                <div className="w-full max-w-[560px] mt-4">
-                  <pre className="whitespace-pre-wrap text-[12px] leading-5 text-[#C9D1D9] bg-[#111214] border border-[#2A2A2A] rounded-[12px] p-4 overflow-x-auto">
-                    {code}
-                  </pre>
-                </div>
-              ) : null}
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept=".txt,.pdf,.doc,.docx,.md,.json,.js,.ts,.html,.css,.jsx,.tsx,.py,.java,.c,.cpp,.cs"
+    multiple
+    className="hidden"
+    onChange={onFilesPicked}
+  />
+</form>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={onFilesPicked}
-              />
-            </form>
           </Container>
         </main>
       )}
@@ -2254,16 +2212,17 @@ function safeWrapCode(text) {
       )}
 
       {/* ===== FOOTER ===== */}
-      {view === "home" && (
-        <footer className="relative z-10 pb-[22px]">
-          <Container>
-            <p className="mx-auto text-center text-[13.8px] leading-[18px] text-[#9AA0A6]">
-              privacy policy  •  terms &amp; use  •  type it. see it. launch it. —— your ideas
-              live in seconds. surfers codes anything better. faster.  •  2025 © surfers · {VERSION_TAG}
-            </p>
-          </Container>
-        </footer>
-      )}
+      {/* ===== FOOTER ===== */}
+{view === "home" && (
+  <footer className="relative z-10 pb-[22px]">
+    <Container>
+      <p className="mx-auto text-center text-[14.5px] font-[400] leading-[20px] text-[#FFFFFF] font-wixmadefor">
+        your ideas live in seconds. surfers codes anything better. faster. • 2025 © surfers.
+      </p>
+    </Container>
+  </footer>
+)}
+
 
       {/* ===== AUTH LIGHTBOX ===== */}
       {authOpen && (

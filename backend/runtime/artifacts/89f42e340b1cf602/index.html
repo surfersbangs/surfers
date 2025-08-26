@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        /* Navigation */
+        nav {
+            padding: 0 20px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 980px;
+        }
+
+        .apple-logo {
+            font-size: 21px;
+            font-weight: 600;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 12px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            opacity: 1;
+        }
+
+        .nav-icons {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-icons span {
+            font-size: 16px;
+            opacity: 0.8;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-icons span:hover {
+            opacity: 1;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 80px 20px 60px;
+            text-align: center;
+            background: linear-gradient(to bottom, #000, #1a1a1a);
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+            background: linear-gradient(45deg, #fff, #aaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero h2 {
+            font-size: 28px;
+            font-weight: 400;
+            margin-bottom: 24px;
+            opacity: 0.8;
+        }
+
+        .hero-links {
+            margin: 30px 0;
+        }
+
+        .hero-links a {
+            color: #2997ff;
+            text-decoration: none;
+            margin: 0 20px;
+            font-size: 21px;
+            transition: all 0.3s ease;
+        }
+
+        .hero-links a:hover {
+            text-decoration: underline;
+            opacity: 0.8;
+        }
+
+        .hero-image {
+            max-width: 800px;
+            margin: 40px auto 0;
+            transition: transform 0.3s ease;
+        }
+
+        .hero-image:hover {
+            transform: scale(1.02);
+        }
+
+        .hero-image img {
+            width: 100%;
+            border-radius: 18px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Products Grid */
+        .products-grid {
+            padding: 80px 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .product-card {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .product-card h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .product-card p {
+            font-size: 16px;
+            opacity: 0.7;
+            margin-bottom: 20px;
+        }
+
+        .product-card .price {
+            font-size: 21px;
+            font-weight: 600;
+            color: #2997ff;
+            margin-bottom: 20px;
+        }
+
+        .product-card button {
+            background: #0071e3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 980px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .product-card button:hover {
+            background: #0077ed;
+            transform: scale(1.05);
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 20px 40px;
+            background: #1d1d1f;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+        }
+
+        .footer-column h4 {
+            font-size: 12px;
+            color: #86868b;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .footer-column a {
+            display: block;
+            color: #fff;
+            text-decoration: none;
+            font-size: 12px;
+            margin-bottom: 12px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .footer-column a:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .copyright {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #86868b;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav>
+            <div class="nav-content">
+                <div class="apple-logo">􀣺</div>
+                <div class="nav-links">
+                    <a href="#">Store</a>
+                    <a href="#">Mac</a>
+                    <a href="#">iPad</a>
+                    <a href="#">iPhone</a>
+                    <a href="#">Watch</a>
+                    <a href="#">AirPods</a>
+                </div>
+                <div class="nav-icons">
+                    <span>􀍠</span>
+                    <span>􀣽</span>
+                    <span>􀣋</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1>iPhone 15 Pro</h1>
+            <h2>Titanium. So strong. So light. So Pro.</h2>
+            <div class="hero-links">
+                <a href="#">Learn more 􀄫</a>
+                <a href="#">Buy 􀄫</a>
+            </div>
+            <div class="hero-image">
+                <img src="https://placehold.co/800x400/111/fff?text=iPhone+15+Pro" alt="iPhone 15 Pro">
+            </div>
+        </section>
+
+        <!-- Products Grid -->
+        <section class="products-grid">
+            <div class="product-card">
+                <h3>MacBook Air</h3>
+                <p>Supercharged by M2</p>
+                <div class="price">From $999</div>
+                <button>Buy</button>
+            </div>
+            <div class="product-card">
+                <h3>iPad Pro</h3>
+                <p>Supercharged by M2</p>
+                <div class="price">From $799</div>
+                <button>Buy</button>
+            </div>
+            <div class="product-card">
+                <h3>Apple Watch</h3>
+                <p>Smarter. Brighter. Mightier.</p>
+                <div class="price">From $399</div>
+                <button>Buy</button>
+            </div>
+            <div class="product-card">
+                <h3>AirPods Pro</h3>
+                <p>Magic like you've never heard</p>
+                <div class="price">From $249</div>
+                <button>Buy</button>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h4>Shop and Learn</h4>
+                    <a href="#">Store</a>
+                    <a href="#">Mac</a>
+                    <a href="#">iPad</a>
+                    <a href="#">iPhone</a>
+                    <a href="#">Watch</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Services</h4>
+                    <a href="#">Apple Music</a>
+                    <a href="#">Apple TV+</a>
+                    <a href="#">Apple Fitness+</a>
+                    <a href="#">Apple News+</a>
+                    <a href="#">Apple Arcade</a>
+                </div>
+                <div class="footer-column">
+                    <h4>Apple Store</h4>
+                    <a href="#">Find a Store</a>
+                    <a href="#">Genius Bar</a>
+                    <a href="#">Today at Apple</a>
+                    <a href="#">Apple Camp</a>
+                    <a href="#">Financing</a>
+                </div>
+                <div class="footer-column">
+                    <h4>About Apple</h4>
+                    <a href="#">Newsroom</a>
+                    <a href="#">Apple Leadership</a>
+                    <a href="#">Career Opportunities</a>
+                    <a href="#">Investors</a>
+                    <a href="#">Ethics & Compliance</a>
+                </div>
+            </div>
+            <div class="copyright">
+                Copyright © 2024 Apple Inc. All rights reserved.
+            </div>
+        </footer>
+    </div>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

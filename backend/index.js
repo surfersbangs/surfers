@@ -75,6 +75,8 @@ const ART_DIR     = path.join(RUNTIME_DIR, 'artifacts');
 const PUB_FILE    = path.join(RUNTIME_DIR, 'published.json');
 if (!fs.existsSync(ART_DIR)) fs.mkdirSync(ART_DIR, { recursive: true });
 if (!fs.existsSync(PUB_FILE)) fs.writeFileSync(PUB_FILE, '{}', 'utf8');
+// ===== Subdomain config (for <slug>.surfers.co.in). If not set, server uses /live/:slug/
+const BASE_DOMAIN = process.env.BASE_DOMAIN || null; // e.g. 'surfers.co.in'
 
 // ---------- utils ----------
 function trimHistory(history = [], keepPairs = 4, charCap = 12000) {
@@ -344,6 +346,30 @@ function getBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
+// Extract subdomain label from Host (supports *.lvh.me for local)
+function subdomainFromHost(hostRaw, baseDomain = BASE_DOMAIN) {
+  if (!hostRaw || !baseDomain) return null;
+  const host = String(hostRaw).toLowerCase().split(':')[0];
+
+  // Local dev: anysub.lvh.me -> 127.0.0.1
+  if (host.endsWith('.lvh.me')) {
+    const parts = host.split('.');
+    return parts.length >= 3 ? parts[0] : null;
+  }
+
+  const base = String(baseDomain).toLowerCase();
+  if (!host.endsWith(base)) return null;
+
+  let left = host.slice(0, -base.length);
+  if (left.endsWith('.')) left = left.slice(0, -1);
+  if (!left) return null;
+
+  const label = left.split('.').pop();
+  if (['www', 'app', 'api'].includes(label)) return null;
+  return label;
+}
+
+
 function injectPreviewSnippet(html) {
   const snippet = `
 <script>
@@ -424,6 +450,22 @@ app.use('/preview/:id', (req, res, next) => {
    PUBLISH MAP & STATIC SERVE
    ========================================================== */
 
+// HEAD /live/:slug/ -> 200 if published, 404 if free
+app.head('/live/:slug/', async (req, res) => {
+  const slug = sanitizeSlug(req.params.slug);
+  try {
+    const pub = await readPublished();
+    const artifactId = pub[slug];
+    if (artifactId && fs.existsSync(path.join(ART_DIR, artifactId))) {
+      return res.sendStatus(200);
+    }
+    return res.sendStatus(404);
+  } catch {
+    return res.sendStatus(404);
+  }
+});
+
+
 app.post('/api/publish', async (req, res) => {
   try {
     const { project, artifactId } = req.body || {};
@@ -440,13 +482,48 @@ app.post('/api/publish', async (req, res) => {
     await writePublished(pub);
 
     const base = getBaseUrl(req);
-    const liveUrl = `${base}/live/${slug}/`;
-    return res.json({ project: slug, artifactId, liveUrl });
+const liveUrl = BASE_DOMAIN
+  ? `https://${slug}.${BASE_DOMAIN}/`
+  : `${base}/live/${slug}/`;
+return res.json({ project: slug, artifactId, liveUrl });
+
   } catch (err) {
     console.error('publish error', err);
     return res.status(500).send(err?.message || 'publish failed');
   }
 });
+
+// Serve published sites on subdomains: https://<slug>.<BASE_DOMAIN>/...
+app.use(async (req, res, next) => {
+  // Only do this when BASE_DOMAIN is configured
+  if (!BASE_DOMAIN) return next();
+
+  const host = req.headers.host || req.hostname;
+  const slug = subdomainFromHost(host, BASE_DOMAIN);
+  if (!slug) return next();
+
+  // Don't hijack API/preview/live/health calls even on subdomains
+  if (/^\/(api|preview|live|health)\b/.test(req.path)) return next();
+
+  let pub = {};
+  try { pub = await readPublished(); } catch {}
+  const artifactId = pub[slug];
+  if (!artifactId) return res.status(404).send(`No site found for ${slug}.${BASE_DOMAIN}`);
+
+  const root = path.join(ART_DIR, artifactId);
+  if (!fs.existsSync(root)) return res.status(404).send(`Artifact missing for ${slug}`);
+
+  return express.static(root, { index: ['index.html'], extensions: ['html'] })(
+    req,
+    res,
+    (err) => {
+      if (err) return next(err);
+      // SPA fallback
+      res.sendFile(path.join(root, 'index.html'));
+    }
+  );
+});
+
 
 // dynamic static for /live/:project/*
 app.use('/live/:project', async (req, res, next) => {
@@ -464,7 +541,7 @@ app.use('/live/:project', async (req, res, next) => {
    BOOT
    ========================================================== */
 const PORT = Number(process.env.PORT) || 4000;
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0';
 const server = app.listen(PORT, HOST, () => {
   console.log(`API on http://${HOST}:${PORT}`);
   if (process.env.PUBLIC_BASE_URL) {

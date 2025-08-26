@@ -1085,6 +1085,15 @@ function SurfersApp() {
   const chatFileInputRef = useRef(null);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
+  // --- subdomain base (prod via env; local falls back to lvh.me trick)
+const BASE_DOMAIN =
+  import.meta.env.VITE_BASE_DOMAIN ||
+  (typeof window !== "undefined" && window.location.hostname.endsWith("lvh.me")
+    ? "lvh.me"
+    : "surfers.co.in");
+
+const SUBDOMAIN_SUFFIX = `.${BASE_DOMAIN}`;
+
   const makeAbsoluteUrl = (u) => {
     try {
       return new URL(u, API_URL).toString();
@@ -1760,7 +1769,7 @@ function safeWrapCode(text) {
 
   // copy full domain for go-live (turns button blue briefly)
   const copySlugFull = async () => {
-    const full = `${liveSlug}${".surfers.co.in"}`;
+    const full = `${liveSlug}${SUBDOMAIN_SUFFIX}`; // with ".surfers.co.in" subdomain
     try {
       await navigator.clipboard?.writeText(full);
       setCopiedSlug(true);
@@ -2323,20 +2332,22 @@ function safeWrapCode(text) {
         onClose={closeModal}
       />
       <ViewModal open={modal.type === "view"} url={modal.url} onClose={closeModal} />
-      <LiveModal
-        open={modal.type === "live"}
-        onClose={closeModal}
-        slug={liveSlug}
-        setSlug={setLiveSlug}
-        busy={liveBusy}
-        note={modal.note}
-        onPublish={publishCurrent}
-        onCheck={checkAvailability}
-        avail={liveAvail}
-        onCopy={copySlugFull}
-        copied={copiedSlug}
-        liveUrl={liveResultUrl}
-      />
+     <LiveModal
+  open={modal.type === "live"}
+  onClose={closeModal}
+  slug={liveSlug}
+  setSlug={setLiveSlug}
+  busy={liveBusy}
+  note={modal.note}
+  onPublish={publishCurrent}
+  onCheck={checkAvailability}
+  avail={liveAvail}
+  onCopy={copySlugFull}
+  copied={copiedSlug}
+  liveUrl={liveResultUrl}
+  baseSuffix={SUBDOMAIN_SUFFIX}   // ✅ added
+/>
+
     </div>
   );
 }

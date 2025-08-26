@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Guess The Number</title>
+  <style>body{font-family:sans-serif;text-align:center;margin-top:50px}</style>
+</head>
+<body>
+  <h2>Guess a number 1-10</h2>
+  <input type="number" id="guess" min="1" max="10">
+  <button onclick="checkGuess()">Check</button>
+  <p id="result"></p>
+  <script>let secret=Math.floor(Math.random()*10)+1;function checkGuess(){let g=document.getElementById("guess").value;document.getElementById("result").innerText=g==secret?"Correct!":"Wrong!"}</script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

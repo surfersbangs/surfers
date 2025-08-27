@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3x3 Sliding Puzzle</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        .puzzle-container {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 4px;
+            background-color: #333;
+            padding: 4px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .tile {
+            width: 100px;
+            height: 100px;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            user-select: none;
+        }
+        
+        .tile:hover {
+            background-color: #f0f0f0;
+            transform: scale(1.02);
+        }
+        
+        .empty {
+            background-color: transparent;
+            cursor: default;
+        }
+        
+        .empty:hover {
+            background-color: transparent;
+            transform: none;
+        }
+        
+        .win-message {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .show {
+            opacity: 1;
+        }
+        
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>3x3 Sliding Puzzle</h1>
+    <div class="puzzle-container" id="puzzle"></div>
+    <div class="win-message" id="winMessage">Congratulations! You solved it! 🎉</div>
+    <button onclick="shufflePuzzle()">Shuffle Puzzle</button>
+
+    <script>
+        const puzzleContainer = document.getElementById('puzzle');
+        const winMessage = document.getElementById('winMessage');
+        let emptyIndex = 8; // Start with bottom right empty
+        let tiles = [];
+        let isSolved = false;
+
+        // Create initial puzzle
+        function createPuzzle() {
+            puzzleContainer.innerHTML = '';
+            tiles = [];
+            
+            for (let i = 0; i < 8; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.textContent = i + 1;
+                tile.dataset.index = i;
+                tile.addEventListener('click', () => moveTile(i));
+                puzzleContainer.appendChild(tile);
+                tiles.push(tile);
+            }
+            
+            // Add empty space
+            const empty = document.createElement('div');
+            empty.className = 'tile empty';
+            puzzleContainer.appendChild(empty);
+            tiles.push(empty);
+        }
+
+        // Check if tile can move and move it
+        function moveTile(index) {
+            if (isSolved) return;
+            
+            const row = Math.floor(index / 3);
+            const col = index % 3;
+            const emptyRow = Math.floor(emptyIndex / 3);
+            const emptyCol = emptyIndex % 3;
+            
+            // Check if adjacent to empty space
+            if ((Math.abs(row - emptyRow) === 1 && col === emptyCol) || 
+                (Math.abs(col - emptyCol) === 1 && row === emptyRow)) {
+                
+                // Swap positions
+                [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+                [tiles[index].dataset.index, tiles[emptyIndex].dataset.index] = [tiles[emptyIndex].dataset.index, tiles[index].dataset.index];
+                
+                emptyIndex = index;
+                checkWin();
+            }
+        }
+
+        // Check if puzzle is solved
+        function checkWin() {
+            for (let i = 0; i < 8; i++) {
+                if (parseInt(tiles[i].textContent) !== i + 1) {
+                    return;
+                }
+            }
+            
+            isSolved = true;
+            winMessage.classList.add('show');
+        }
+
+        // Shuffle the puzzle
+        function shufflePuzzle() {
+            isSolved = false;
+            winMessage.classList.remove('show');
+            
+            // Reset to solved state first
+            for (let i = 0; i < 8; i++) {
+                tiles[i].textContent = i + 1;
+                tiles[i].dataset.index = i;
+            }
+            emptyIndex = 8;
+            
+            // Perform random moves to shuffle
+            const moves = 100;
+            for (let i = 0; i < moves; i++) {
+                const possibleMoves = [];
+                const emptyRow = Math.floor(emptyIndex / 3);
+                const emptyCol = emptyIndex % 3;
+                
+                // Check all four directions
+                if (emptyRow > 0) possibleMoves.push(emptyIndex - 3); // Up
+                if (emptyRow < 2) possibleMoves.push(emptyIndex + 3); // Down
+                if (emptyCol > 0) possibleMoves.push(emptyIndex - 1); // Left
+                if (emptyCol < 2) possibleMoves.push(emptyIndex + 1); // Right
+                
+                // Randomly select a move
+                const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                
+                // Swap with empty
+                [tiles[randomMove], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[randomMove]];
+                [tiles[randomMove].dataset.index, tiles[emptyIndex].dataset.index] = [tiles[emptyIndex].dataset.index, tiles[randomMove].dataset.index];
+                
+                emptyIndex = randomMove;
+            }
+        }
+
+        // Initialize the puzzle
+        createPuzzle();
+        shufflePuzzle();
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

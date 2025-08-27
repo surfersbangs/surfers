@@ -77,6 +77,12 @@ const Container = ({ children, className = "" }) => (
   </div>
 );
 
+// Chat output rail: 5vw margins on small/medium, 20vw on large+.
+// NOTE: The prompt box is NOT inside this rail per your instruction.
+const Rail = ({ children, className = "" }) => (
+  <div className={`mx-auto ml-[5vw] mr-[5vw] lg:ml-[20vw] lg:mr-[20vw] ${className}`}>{children}</div>
+);
+
 const LogoSmall = ({ className = "h-5 w-5" }) => (
   <img src="/logowhite.png" alt="surfers logo" className={className} />
 );
@@ -114,7 +120,7 @@ const FigmaIcon = ({ className = "h-4 w-4" }) => (
 const Spinner = ({ className = "h-4 w-4" }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
     <g fill="none" stroke="#C8CCD2" strokeWidth="2">
-      <circle cx="12" cy="12" r="9" opacity="0.25" />
+      <circle cx="12" cy="12" r="20" opacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9">
         <animateTransform
           attributeName="transform"
@@ -137,11 +143,10 @@ function CodeBlock({ inline, className, children, ...props }) {
   const raw = Array.isArray(children) ? children.join("") : children ?? "";
   const lang = (className || "").replace("language-", "").trim();
 
-  // detect single-line (no newline)
   const isSingleLine = !raw.includes("\n");
 
   useEffect(() => {
-    if (inline || isSingleLine) return; // skip highlight for tiny inline snippets
+    if (inline || isSingleLine) return;
     let mounted = true;
     import("highlight.js")
       .then((mod) => {
@@ -171,7 +176,6 @@ function CodeBlock({ inline, className, children, ...props }) {
     };
   }, [raw, lang, inline, isSingleLine]);
 
-  // force single-line snippets into inline style
   if (inline || isSingleLine) {
     return (
       <code
@@ -183,7 +187,6 @@ function CodeBlock({ inline, className, children, ...props }) {
     );
   }
 
-  // multi-line → normal block
   return (
     <pre className="mb-3 rounded-[12px] bg-[#0f0f10] border border-[#2A2A2A] overflow-x-auto">
       <code
@@ -252,6 +255,14 @@ const VERSION_TAG = "app modal rev - 2025-08-23";
    ========================= */
 const FENCE_GLOBAL_RE = /```(\w+)?\n([\s\S]*?)```/g;
 const INLINE_LANG_RE = /^\s*(html?|css|js|javascript|typescript)\s*:?\s*$/i;
+// show action row only when the output actually contains code
+const HAS_REAL_CODE_RE =
+  /```[\s\S]*?```|<\/?(?:html|head|body|script|style|div|section|main|canvas)\b|^\s*(?:<!DOCTYPE|#include|import\s+|class\s+\w+|def\s+\w+\(|function\s+\w+\(|(?:const|let|var)\s+\w+\s*=)/mi;
+
+function outputHasActualCode(t = "") {
+  return HAS_REAL_CODE_RE.test(t || "");
+}
+
 
 // --- NEW: robust file extraction for CodeModal tabs ---
 const ANY_FENCE_RE = /```([^\n]*)\n([\s\S]*?)```/g;
@@ -348,7 +359,6 @@ function extFromFilename(fname) {
   if (/^dockerfile$/i.test(base)) return "dockerfile";
   const m = base.match(/\.([A-Za-z0-9]+)$/);
   const ext = m ? m[1].toLowerCase() : "";
-  // map a few common ones to lang names
   const extLangMap = {
     js: "javascript",
     mjs: "javascript",
@@ -402,8 +412,8 @@ function defaultNameForLang(lang, idx = 0) {
 function isLikelyFilenameToken(s) {
   const t = (s || "").trim().replace(/:$/, "");
   if (!t || /\s/.test(t)) return false;
-  if (t.startsWith(".")) return true; // .gitignore, .env
-  if (t.includes(".")) return true; // style.css, main.cpp
+  if (t.startsWith(".")) return true;
+  if (t.includes(".")) return true;
   const specials = ["Makefile", "Dockerfile", "CMakeLists.txt", "LICENSE", "README", "README.md"];
   return specials.includes(t);
 }
@@ -417,7 +427,7 @@ function extractFilesFromText(text) {
     const startMatch = lines[i].match(/^\s*```(.*)$/);
     if (!startMatch) continue;
 
-    const info = (startMatch[1] || "").trim(); // could be lang or filename
+    const info = (startMatch[1] || "").trim();
     const startIdx = i;
     const codeLines = [];
     i++;
@@ -425,12 +435,10 @@ function extractFilesFromText(text) {
       codeLines.push(lines[i]);
       i++;
     }
-    // closing fence consumed by loop (if present)
 
     let filename = null;
     let lang = "";
 
-    // If the info string itself looks like a filename, use it
     if (isLikelyFilenameToken(info)) {
       filename = info.replace(/:$/, "");
       lang = extFromFilename(filename);
@@ -438,13 +446,12 @@ function extractFilesFromText(text) {
       lang = normalizeLang(info);
     }
 
-    // If no filename yet, look a few lines above for a lone filename token (incl. bullets/headings)
     if (!filename) {
       for (let k = startIdx - 1, tries = 0; k >= 0 && tries < 4; k--, tries++) {
         let probe = lines[k].trim();
         if (!probe) continue;
-        probe = probe.replace(/^[-*]\s+/, ""); // bullet lists
-        probe = probe.replace(/^#{1,6}\s+/, ""); // markdown headings
+        probe = probe.replace(/^[-*]\s+/, "");
+        probe = probe.replace(/^#{1,6}\s+/, "");
         if (isLikelyFilenameToken(probe)) {
           filename = probe.replace(/:$/, "");
           if (!lang) lang = extFromFilename(filename);
@@ -453,7 +460,6 @@ function extractFilesFromText(text) {
       }
     }
 
-    // Fallback naming
     if (!lang) lang = "plaintext";
     if (!filename) filename = defaultNameForLang(lang, files.length);
 
@@ -464,7 +470,6 @@ function extractFilesFromText(text) {
     });
   }
 
-  // If nothing was fenced, fall back to the merged parser to at least show something
   if (files.length === 0) {
     const parsed = parseGeneratedCode(text);
     files.push({
@@ -605,10 +610,9 @@ function parseGeneratedCode(fullText) {
    Stream ingestor (raw/SSE/ndjson)
    ========================= */
 function makeStreamIngestor(onText, onDone) {
-  let mode = "unknown"; // raw | sse | ndjson
+  let mode = "unknown";
   let buf = "";
 
-  // --- FIX: strip stray [DONE] tokens in all modes ---
   const stripDone = (s = "") => s.replace(/^\s*(?:data:\s*)?\[DONE\]\s*$/gm, "");
 
   function handleRaw(s) {
@@ -677,7 +681,6 @@ function makeStreamIngestor(onText, onDone) {
         else if (probe.trim().startsWith("{") || probe.includes("\n{")) mode = "ndjson";
         else mode = "raw";
       } else if (mode === "raw" && /^\s*data:/m.test(chunk)) {
-        // upgrade if the stream switches to SSE later
         mode = "sse";
       }
       if (mode === "sse") return handleSSE(chunk);
@@ -706,10 +709,9 @@ function makeStreamIngestor(onText, onDone) {
 }
 
 /* =========================
-   MODALS — brand new
+   MODALS
    ========================= */
 
-// Generic overlay
 const Overlay = ({ children, onClose }) => (
   <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70">
     <button
@@ -723,11 +725,10 @@ const Overlay = ({ children, onClose }) => (
   </div>
 );
 
-// VIEW modal (window-style)
 const ViewModal = ({ open, url, onClose }) => {
   if (!open) return null;
   const label = (() => {
-       try {
+    try {
       const u = new URL(url);
       return `${u.host}${u.pathname}`;
     } catch {
@@ -765,7 +766,6 @@ const ViewModal = ({ open, url, onClose }) => {
   );
 };
 
-// CODE modal (editor-like) — TABS NOW DYNAMIC FROM OUTPUT
 const CodeModal = ({ open, files = [], lang, code, onClose }) => {
   const [active, setActive] = useState(0);
 
@@ -819,7 +819,6 @@ const CodeModal = ({ open, files = [], lang, code, onClose }) => {
   );
 };
 
-// LIVE modal (go live. yeah.)
 const LiveModal = ({
   open,
   onClose,
@@ -871,7 +870,6 @@ const LiveModal = ({
               </div>
             </div>
 
-            {/* copy button — turns blue when clicked */}
             <button
               onClick={onCopy}
               className={`h-12 w-12 rounded-xl border ${
@@ -881,7 +879,6 @@ const LiveModal = ({
               }`}
               title="copy full domain"
             >
-              {/* copy icon */}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="mx-auto">
                 <rect
                   x="9"
@@ -933,7 +930,6 @@ const LiveModal = ({
           {"go live. fast. dude"}
         </button>
 
-        {/* live link appears ONLY after publishing */}
         {liveUrl && (
           <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-300 bg-gray-50 p-3">
             <div className="text-sm text-gray-700">live link:</div>
@@ -943,7 +939,6 @@ const LiveModal = ({
               rel="noreferrer"
               className="inline-flex items-center gap-2 text-[#1a73e8] underline"
             >
-              {/* external-link icon */}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M14 5h5v5"
@@ -986,27 +981,21 @@ const LiveModal = ({
    MAIN APP
    ========================= */
 function SurfersApp() {
-  // routing
   const [view, setView] = useState("home");
 
-  // home prompt
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState("");
 
-  // attachments
   const [images, setImages] = useState([]);
   const [figmas, setFigmas] = useState([]);
   const [showAttach, setShowAttach] = useState(false);
 
-  // auth
   const [user, setUser] = useState(null);
 
-  // chat
   const [messages, setMessages] = useState([]); // {id, role, content}
   const [chatInput, setChatInput] = useState("");
 
-  // streaming
   const [isStreaming, setIsStreaming] = useState(false);
   const [phase, setPhase] = useState(null);
   const atBottomRef = useRef(true);
@@ -1035,8 +1024,6 @@ function SurfersApp() {
   const [pendingPrompt, setPendingPrompt] = useState("");
   const [pendingImages, setPendingImages] = useState([]);
 
-  // NEW modal controller (single source of truth)
-  // { type: 'code'|'view'|'live'|null, msgId, code, lang, url, note, files, activeIdx }
   const [modal, setModal] = useState({
     type: null,
     msgId: null,
@@ -1048,16 +1035,14 @@ function SurfersApp() {
     activeIdx: 0,
   });
 
-  // preview/publish
   const [previews, setPreviews] = useState({});
   const [published, setPublished] = useState({});
 
-  // go live modal state
   const [liveSlug, setLiveSlug] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
-  const [liveAvail, setLiveAvail] = useState(null); // null | 'free' | 'taken'
-  const [copiedSlug, setCopiedSlug] = useState(false); // NEW
-  const [liveResultUrl, setLiveResultUrl] = useState(""); // NEW
+  const [liveAvail, setLiveAvail] = useState(null);
+  const [copiedSlug, setCopiedSlug] = useState(false);
+  const [liveResultUrl, setLiveResultUrl] = useState("");
 
   const formRef = useRef(null);
   const textareaRef = useRef(null);
@@ -1070,7 +1055,6 @@ function SurfersApp() {
   const chatFileInputRef = useRef(null);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
-  // --- subdomain base (prod via env; local falls back to lvh.me trick)
   const BASE_DOMAIN =
     import.meta.env.VITE_BASE_DOMAIN ||
     (typeof window !== "undefined" && window.location.hostname.endsWith("lvh.me")
@@ -1091,7 +1075,6 @@ function SurfersApp() {
   const MAX_LINES = 7;
   const MAX_TA_HEIGHT = LINE_HEIGHT_PX * MAX_LINES;
 
-  // typewriter
   const TW_PREFIX = "surfers builds ";
   const TW_LIST = ["games for you", "websites for you", "apps for you", "anything for you"];
   const [twIdx, setTwIdx] = useState(0);
@@ -1172,7 +1155,6 @@ function SurfersApp() {
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      // if user triggered from auth page without a pending prompt, go home
       if (!pendingPrompt && view === "auth") setView("home");
     } catch (err) {
       console.error(err);
@@ -1285,10 +1267,6 @@ function SurfersApp() {
   const removeImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
   const removeFigma = (i) => setFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
-  const onAddImageClickChat = () => {
-    chatFileInputRef.current?.click();
-    setShowChatAttach(false);
-  };
   const onFilesPickedChat = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -1296,21 +1274,6 @@ function SurfersApp() {
     setChatImages((prev) => [...prev, ...previews]);
     e.target.value = "";
   };
-  const onAddFigmaClickChat = () => {
-    const url = window.prompt("Paste Figma link:");
-    if (!url) return;
-    const ok = /figma\.com\/(file|design)\//i.test(url);
-    if (!ok) {
-      alert("That doesn't look like a Figma file link.");
-      return;
-    }
-    setChatFigmas((prev) => [...prev, url]);
-    setShowChatAttach(false);
-  };
-  const removeChatImage = (i) =>
-    setChatImages((prev) => prev.filter((_, idx) => idx !== i));
-  const removeChatFigma = (i) =>
-    setChatFigmas((prev) => prev.filter((_, idx) => idx !== i));
 
   const addAssistantPlaceholder = () => {
     const id = Date.now() + Math.random();
@@ -1358,7 +1321,6 @@ function SurfersApp() {
     setCopiedSlug(false);
   };
 
-  // STREAMING — raw body from /api/stream-es
   async function sendMessageStream(text, attachments = []) {
     const userId = Date.now();
     setMessages((prev) => [...prev, { id: userId, role: "user", content: text }]);
@@ -1431,7 +1393,6 @@ function SurfersApp() {
       ingestor.end();
       flushNow(asstId);
 
-      // --- FINAL CLEANUP: ensure no stray [DONE] lines remain ---
       setMessages((prev) =>
         prev.map((m) =>
           m.id === asstId
@@ -1462,7 +1423,6 @@ function SurfersApp() {
     }
   }
 
-  // submit handlers
   async function onSubmit(e) {
     e.preventDefault();
     if (isStreaming) stopStreaming("new-message");
@@ -1514,7 +1474,6 @@ function SurfersApp() {
 
   const getMsgById = (id) => messages.find((m) => m.id === id);
 
-  // preview builder
   async function buildOrUpdatePreview(msgId) {
     const msg = getMsgById(msgId);
     const parsed = parseGeneratedCode(msg?.content || "");
@@ -1551,7 +1510,6 @@ function SurfersApp() {
     }
   }
 
-  // open modals
   const openCodeModal = (id) => {
     const msg = getMsgById(id);
     const files = extractFilesFromText(msg?.content || "");
@@ -1579,7 +1537,6 @@ function SurfersApp() {
   };
 
   const openLiveModal = async (id) => {
-    // ensure preview exists
     let prev = previews[id];
     if (!prev?.artifactId) {
       const built = await buildOrUpdatePreview(id);
@@ -1608,7 +1565,6 @@ function SurfersApp() {
     setCopiedSlug(false);
   };
 
-  // chat bubble text: strip all code (fenced + full HTML docs) and strip bare "index.html" lines
   const stripFenced = (t) => (t || "").replace(/```[\s\S]*?```/g, "");
   const stripHtmlDoc = (t) =>
     (t || "").replace(/<!DOCTYPE[\s\S]*?<\/html>/gi, "").replace(/<html[\s\S]*?<\/html>/gi, "");
@@ -1616,28 +1572,7 @@ function SurfersApp() {
     (t || "").replace(/^\s*index\.html\s*:?\s*$/gim, "");
   const stripGeneratedCodeFromChat = (t) =>
     stripIndexHtmlMention(stripHtmlDoc(stripFenced(t)));
-  // --- NEW: auto-close unbalanced code fences ---
-  function safeWrapCode(text) {
-    if (!text) return "";
-    const count = (text.match(/```/g) || []).length;
-    // If odd → missing closing fence → add it
-    if (count % 2 !== 0) {
-      return text + "\n```";
-    }
-    return text;
-  }
 
-  // --- NEW: sticky action dock targets the latest assistant message
-  const lastAssistantId = (() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.role === "assistant" && (m.content ?? "").trim() !== "") return m.id;
-    }
-    return null;
-  })();
-  const showStickyActions = !!lastAssistantId && !isStreaming;
-
-  // publish helpers
   const publishCurrent = async () => {
     const msgId = modal.msgId;
     const prev = previews[msgId];
@@ -1671,7 +1606,7 @@ function SurfersApp() {
       const data = await res.json();
       const liveAbs = makeAbsoluteUrl(data.liveUrl);
       setPublished((p) => ({ ...p, [data.project]: data.artifactId }));
-      setLiveResultUrl(liveAbs); // NEW: show link below button
+      setLiveResultUrl(liveAbs);
       setModal((m) => ({ ...m, note: "Live!" }));
       setLiveBusy(false);
     } catch (err) {
@@ -1692,7 +1627,6 @@ function SurfersApp() {
       return;
     }
     try {
-      // If GET /live/:slug/ returns 200, it's taken; 404 means free
       const res = await fetch(`${API_URL}/live/${slug}/`, { method: "HEAD" });
       setLiveAvail(res.ok ? "taken" : "free");
     } catch {
@@ -1705,9 +1639,8 @@ function SurfersApp() {
     }
   };
 
-  // copy full domain for go-live (turns button blue briefly)
   const copySlugFull = async () => {
-    const full = `${liveSlug}${SUBDOMAIN_SUFFIX}`; // with ".surfers.co.in" subdomain
+    const full = `${liveSlug}${SUBDOMAIN_SUFFIX}`;
     try {
       await navigator.clipboard?.writeText(full);
       setCopiedSlug(true);
@@ -1770,7 +1703,6 @@ function SurfersApp() {
       {/* ===== HOME ===== */}
       {view === "home" && (
         <main className="relative z-10 flex-1">
-          {/* subtle dark overlay so white text stays readable */}
           <div className="absolute inset-0  pointer-events-none" />
 
           <Container className="flex flex-col items-center justify-center min-h-[72vh]">
@@ -1791,7 +1723,6 @@ function SurfersApp() {
                   </div>
                 )}
 
-                {/* TEXTAREA — normal flow (NOT absolute), auto-grows then scrolls, breaks long strings */}
                 <textarea
                   ref={textareaRef}
                   rows={1}
@@ -1808,14 +1739,13 @@ function SurfersApp() {
                   className="prompt-textarea w-full bg-transparent outline-none text-[18px]  leading-[20px]
                  text-[#191919] resize-none break-all"
                   style={{
-                    maxHeight: `${MAX_TA_HEIGHT}px`,   // same cap as chat
-                    overflowY: 'auto',                  // scroll when past the cap
-                    overflowWrap: 'anywhere',           // prevent super-long tokens from spilling
+                    maxHeight: `${MAX_TA_HEIGHT}px`,
+                    overflowY: 'auto',
+                    overflowWrap: 'anywhere',
                   }}
-                  placeholder={prompt ? undefined : ''} // keeps iOS from overlaying a ghost placeholder
+                  placeholder={prompt ? undefined : ''}
                 />
 
-                {/* buttons pinned to the bottom of the card (same pattern as chat) */}
                 <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
                   <div className="relative" ref={attachRef}>
                     <button
@@ -1862,69 +1792,64 @@ function SurfersApp() {
         </main>
       )}
 
-      {/* ===== AUTH (full page) ===== */}
+      {/* ===== AUTH ===== */}
       {view === "auth" && (
-     
-
         <>
-        <div
-  aria-hidden="true"
-  className="fixed inset-0 z-0 "
-  style={{
-    backgroundImage: "url('/background.jpg')",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-  }}
-/>
-<div className="fixed inset-0 z-0 bg-black/40 " aria-hidden="true" />
-   
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-0 "
+            style={{
+              backgroundImage: "url('/background.jpg')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+          />
+          <div className="fixed inset-0 z-0 bg-black/40 " aria-hidden="true" />
 
           <header className="pt-4 ">
             <Container>
               <div className="relative h-[28px] flex items-center mb-12">
-                {/* back button (auth page) */}
-<button
-  onClick={() => setView("home")}
-  aria-label="back"
-  className="fixed top-5 sm:left-20vw] lg:left-[20vw]  z-10"
->
-  <img src="/back.png" alt="back" className="h-4 w-4 rotate-315" />
-</button>
-
+                <button
+                  onClick={() => setView("home")}
+                  aria-label="back"
+                  className="fixed top-5 left-[20vw] lg:left-[20vw] z-10"
+                >
+                  <img src="/back.png" alt="back" className="h-4 w-4 rotate-315" />
+                </button>
               </div>
             </Container>
           </header>
-          
-<main className="relative z-10 lex fitems-center justify-center">
-          <main className="flex-1">
-            <Container className="min-h-[70vh] flex flex-col items-center justify-center text-center leading-[0.8]">
-              <h1 className="text-[#FFFFFF] text-[28px] sm:text-[34px] font-bold mb-1">
-                account?
-              </h1>
-              <div className="text-[#FFFFFF] text-[48px] sm:text-[58px] font-bold mt-0.5 mb-2">
-                create.<br/> </div>
+
+          <main className="relative z-10 lex fitems-center justify-center">
+            <main className="flex-1">
+              <Container className="min-h-[70vh] flex flex-col items-center justify-center text-center leading-[0.8]">
+                <h1 className="text-[#FFFFFF] text-[28px] sm:text[34px] font-bold mb-1">
+                  account?
+                </h1>
+                <div className="text-[#FFFFFF] text-[48px] sm:text-[58px] font-bold mt-0.5 mb-2">
+                  create.<br/> </div>
                 <div className="text-[#FFFFFF] text-[65px] sm:text-[78px] font-bold mt-0.5 mb-7">
-                log in.
-              </div>
+                  log in.
+                </div>
 
-              <button
-                onClick={handleGoogleLogin}
-                className="mt-6.5 h-10.5 px-20 rounded-full bg-white text-[16.5px] font-[500] text-[#484848] inline-flex items-center gap-3"
-              >
-                 <img
-                   src="/google.png"
-                   alt="Google"
-                   className="h-5 w-5"
-                 />
-  continue with Google
-              </button>
+                <button
+                  onClick={handleGoogleLogin}
+                  className="mt-6.5 h-10.5 px-20 rounded-full bg-white text-[16.5px] font-[500] text-[#484848] inline-flex items-center gap-3"
+                >
+                  <img
+                    src="/google.png"
+                    alt="Google"
+                    className="h-5 w-5"
+                  />
+                  continue with Google
+                </button>
 
-              <div className="mt-3 text-sm text-[#C7C7C7]">
-                issues logging in? <span className="cursor-pointer text-[#FFFFFF]">mail us</span>
-              </div>
-            </Container>
-          </main>
+                <div className="mt-3 text-sm text-[#C7C7C7]">
+                  issues logging in? <span className="cursor-pointer text-[#FFFFFF]">mail us</span>
+                </div>
+              </Container>
+            </main>
           </main>
         </>
       )}
@@ -1932,30 +1857,25 @@ function SurfersApp() {
       {/* ===== CHAT PAGE ===== */}
       {view === "chat" && (
         <>
-          <header className="pt-4">
+          {/* FIXED back arrow — same asset as Auth. Responsive left offset: 5vw on small/med, 20vw on large+ */}
+          <button
+            onClick={() => { stopStreaming(); setView("home"); }}
+            aria-label="back"
+            className="fixed top-5 left-[5vw] lg:left-[20vw] z-50"
+          >
+            <img src="/back.png" alt="back" className="h-4 w-4 rotate-315" />
+          </button>
+
+          {/* No logo or profile icon in chat header per request */}
+          <header className="pt-4 bg-[#0E0E0E]">
             <Container>
-              <div className="relative h-[28px] flex items-center">
-                <button
-                  onClick={() => {
-                    stopStreaming();
-                    setView("home");
-                  }}
-                  className="mr-2"
-                >
-                  <BackArrow className="h-[18px] w-[18px]}" />
-                </button>
-                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
-                  <LogoSmall className="h-[18px] w-[18px]" />
-                </div>
-                <div className="ml-auto cursor-pointer" onClick={() => setView("auth")}>
-                  <ProfileIcon className="h-[18px] w-[18px]" />
-                </div>
-              </div>
+              <div className="h-[8px]" />
             </Container>
           </header>
 
-          <main className="flex-1">
-            <Container className="pt-8 pb-40">
+          <main className="flex-1 bg-[#0E0E0E]">
+            {/* Chat OUTPUT rail (5vw / 20vw margins). Prompt box is NOT inside this. */}
+            <Rail className="pt-8 pb-40">
               {messages.map((m) => {
                 const isAssistant = m.role === "assistant";
                 const hasContent = (m.content ?? "").trim() !== "";
@@ -1966,9 +1886,11 @@ function SurfersApp() {
                   (cleaned || "").trim() ||
                   (isAssistant ? "_generated code ready — use the buttons below._" : "");
 
-                // hide inline actions on the LAST assistant msg when sticky dock is visible
-                const showInlineActionButtons =
-                  !showStickyActions || m.id !== lastAssistantId;
+                // show message + 3 buttons ONLY if this assistant message actually contains code
+                const hasCodeForMsg =
+                  isAssistant && extractFilesFromText(m.content || "").some(f => (f.code || "").trim());
+
+                const canShowInline = hasCodeForMsg && !isStreaming;
 
                 return (
                   <div
@@ -1983,7 +1905,7 @@ function SurfersApp() {
                   >
                     <div
                       className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${
-                        isAssistant ? "bg-transparent text-[#EDEDED]" : "bg-[#1A1A1B] text-[#EDEDED]"
+                        isAssistant ? "bg-transparent text-[#FFFFFF]" : "bg-[#FFFFFF] text-[#1A1A1B]"
                       }`}
                       style={{
                         overflowWrap: "anywhere",
@@ -1997,39 +1919,47 @@ function SurfersApp() {
                           <>
                             <Markdown>{textToShow}</Markdown>
 
-                            {!isStreaming && showInlineActionButtons && (
-                              <div className="mt-10 flex flex-wrap items-center gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => openCodeModal(m.id)}
-                                  className="px-4 py-1.5 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
-                                >
-                                  code
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => openViewModal(m.id)}
-                                  className="px-4 py-1.5 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
-                                >
-                                  view
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => openLiveModal(m.id)}
-                                  className="px-4 py-1.5 rounded-full bg-[#FFFFFF] hover:bg-[#FFFFFF] text-black"
-                                >
-                                  go live
-                                </button>
-                              </div>
+                            {/* The line + 3 buttons — appear ONLY when code exists, and align with prompt box (max-w 560). */}
+                            {canShowInline && (
+                              
+                              <div className="w-full max-w-[560px] mx-auto text-center mt-4">
+  <p className="text-[16px] leading-5 text-[#FFFFFF] opacity-90 mb-3">
+    See the code, view to see the site or go live or ask surfers for anything.
+  </p>
+  <div className="flex gap-3">
+    <button
+      type="button"
+      onClick={() => openCodeModal(m.id)}
+      className="flex-1 h-10 rounded-full bg-[#FFFFFF] text-[#2E2E2E]"
+    >
+      code
+    </button>
+    <button
+      type="button"
+      onClick={() => openViewModal(m.id)}
+      className="flex-1 h-10 rounded-full bg-[#FFFFFF] text-[#2E2E2E]"
+    >
+      view
+    </button>
+    <button
+      type="button"
+      onClick={() => openLiveModal(m.id)}
+      className="flex-1 h-10 rounded-full bg-[#FFFFFF] text-[#2E2E2E]"
+    >
+      go live
+    </button>
+  </div>
+</div>
+
                             )}
                           </>
                         ) : isStreaming ? (
                           <div
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#2A2A2A] bg-[#111214] text-[#C8CCD2] text-[12px]"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full  text-[#FFFFFF] text-[15.5px]"
                             aria-live="polite"
                           >
                             <Spinner />
-                            <span>{phase === "coding" ? "writing code…" : "writing…"}</span>
+                            <span>{phase === "coding" ? "Thinking.." : "Thinking"}</span>
                           </div>
                         ) : null
                       ) : (
@@ -2040,104 +1970,18 @@ function SurfersApp() {
                 );
               })}
               <div ref={chatEndRef} />
-            </Container>
+            </Rail>
           </main>
 
-          {/* input row + NEW centered action dock */}
-          <div className="fixed left-0 right-0 bottom-0 bg-gradient-to-t from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6">
+          {/* Chat PROMPT — exact copy of Home prompt box. Not inside Rail. */}
+          <div className="fixed left-0 right-0 bottom-0  from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6 bg-[#0E0E0E]">
             <Container>
-              {/* --- Sticky action dock (centered above prompt) --- */}
-              {showStickyActions && (
-                <div className="w-full max-w-[720px] mx-auto mb-4 text-center">
-                  <p className="relative inline-block text-[16px] leading-5 text-[#D1D5DB] opacity-90 mb-3">
-                    You can see the code, view to see the site or go live or ask surfers for
-                    anything.
-                    {/* little arrow pointing down to the prompt box */}
-                    <svg
-                      width="120"
-                      height="26"
-                      viewBox="0 0 120 26"
-                      fill="none"
-                      className="absolute -bottom-5 left-1/2 -translate-x-1/2"
-                      aria-hidden="true"
-                    >
-                      <path d="M5 2 C 40 2, 80 2, 115 2" stroke="#6B7280" strokeWidth="1.2" opacity="0.45" />
-                      <path d="M60 2 L60 18" stroke="#6B7280" strokeWidth="1.2" opacity="0.45" />
-                      <path d="M60 18 L56 14 M60 18 L64 14" stroke="#6B7280" strokeWidth="1.2" opacity="0.45" strokeLinecap="round" />
-                    </svg>
-                  </p>
-                  <div className="flex w-full max-w-[560px] mx-auto gap-3">
-                    <button
-                      type="button"
-                      onClick={() => openCodeModal(lastAssistantId)}
-                      disabled={!lastAssistantId}
-                      className="flex-1 h-10 rounded-full border border-[#2A2A2A] bg-[#1A1A1B] hover:bg-[#232325] text-[#EDEDED]"
-                    >
-                      code
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openViewModal(lastAssistantId)}
-                      disabled={!lastAssistantId}
-                      className="flex-1 h-10 rounded-full bg-white text-black"
-                    >
-                      view
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openLiveModal(lastAssistantId)}
-                      disabled={!lastAssistantId}
-                      className="flex-1 h-10 rounded-full bg-[#EF3A3A] hover:bg-[#ff3d3d] text-white"
-                    >
-                      go live
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <form ref={chatFormRef} onSubmit={sendFromChat} className="w-full max-w-[560px] mx-auto">
-                <div className="relative bg-[#121214] border-[0.5px] border-[#2A2A2A] rounded-[28px] px-[18px] pt-[12px] pb-[40px] shadow-[0_12px_36px_rgba(0,0,0,0.45)]">
-                  {(chatImages.length > 0 || chatFigmas.length > 0) && (
-                    <div className="mb-2 flex flex-wrap gap-2">
-                      {chatImages.map((img, i) => (
-                        <div
-                          key={`cimg-${i}`}
-                          className="relative h-[68px] w-[88px] rounded-[10px] overflow-hidden border border-[#2A2A2A]"
-                        >
-                          <img
-                            src={img.url || URL.createObjectURL(img.file)}
-                            alt={img.name}
-                            className="h-full w-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeChatImage(i)}
-                            className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                      {chatFigmas.map((url, i) => (
-                        <div
-                          key={`cfig-${i}`}
-                          className="group flex itemscenter gap-2 px-3 py-2 rounded-[10px] border border-[#2A2A2A] text-[#C8CCD2]"
-                          title={url}
-                        >
-                          <FigmaIcon />
-                          <span className="max-w-[180px] truncate">{url}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeChatFigma(i)}
-                            className="ml-1 h-5 w-5 rounded-full bg-[#1B1B1C] hover:bg-[#222] text-white text-[12px] flex items-center justify-center"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
+              <form ref={chatFormRef} onSubmit={sendFromChat} className="w-full max-w-[560px] mx-auto prompt-textarea">
+                <div
+                  className="relative bg-[#FFFFFF] border-[#2A2A2A] rounded-[32px]
+                             px-[25px] pt-[15px] pb-[65px]
+                             shadow-[0_12px_36px_rgba(0,0,0,0.45)]"
+                >
                   <textarea
                     ref={chatTextareaRef}
                     rows={1}
@@ -2150,59 +1994,40 @@ function SurfersApp() {
                         chatFormRef.current?.requestSubmit();
                       }
                     }}
-                    placeholder="build anything fantastic."
-                    className="w-full bg-transparent outline-none text-[16px] leading-[20px] placeholder:text-[#9AA0A6] text-[#EDEDED] resize-none"
-                    style={{ maxHeight: `${MAX_TA_HEIGHT}px` }}
+                    placeholder="ideas? let's build that"
+                    className="w-full bg-transparent outline-none text-[18px] leading-[20px] text-[#191919] resize-none break-all"
+                    style={{ maxHeight: `${MAX_TA_HEIGHT}px`, overflowY: "auto", overflowWrap: "anywhere" }}
                   />
 
                   <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
-                    <div className="relative" ref={chatAttachRef}>
-                      <button
-                        type="button"
-                        aria-label="add"
-                        onClick={() => setShowChatAttach((v) => !v)}
-                        className="text-[#C8CCD2] text-[18px] leading-none hover:text-white transition-colors"
-                      >
-                        +
-                      </button>
-                      {showChatAttach && (
-                        <div className="absolute -top-2 left-0 -translate-y-full w-[180px] rounded-[12px] bg-white text-black border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.15)] p-2">
-                          <button
-                            type="button"
-                            onClick={onAddImageClickChat}
-                            className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
-                          >
-                            <ImageIcon /> <span className="text-[14px] text-neutral-800">add image</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={onAddFigmaClickChat}
-                            className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-[8px] hover:bg-neutral-100"
-                          >
-                            <FigmaIcon /> <span className="text-[14px] text-neutral-800">add figma</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    {/* Plain attach from PC (no figma/images menu) */}
+                    <button
+                      type="button"
+                      aria-label="attach file"
+                      onClick={() => chatFileInputRef.current?.click()}
+                      className="text-[#212121] text-[28px] leading-none transition-colors"
+                    >
+                      +
+                    </button>
 
                     <button
                       type="submit"
-                      className="h-[28px] w-[28px] rounded-full bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2] flex items-center justify-center transition-colors"
+                      className="h-[32px] w-[32px] rounded-full bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2] flex items-center justify-center transition-colors text-[24px]"
                       aria-label="send"
                     >
                       ↑
                     </button>
                   </div>
-                </div>
 
-                <input
-                  ref={chatFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={onFilesPickedChat}
-                />
+                  <input
+                    ref={chatFileInputRef}
+                    type="file"
+                    accept=".txt,.pdf,.doc,.docx,.md,.json,.js,.ts,.html,.css,.jsx,.tsx,.py,.java,.c,.cpp,.cs, .pmg, .jpg, .jpeg, .mp3, .mp4, .gif"
+                    multiple
+                    className="hidden"
+                    onChange={onFilesPickedChat}
+                  />
+                </div>
               </form>
             </Container>
           </div>
@@ -2220,7 +2045,7 @@ function SurfersApp() {
         </footer>
       )}
 
-      {/* ===== NEW MODALS (only one ever renders at once) ===== */}
+      {/* ===== MODALS ===== */}
       <CodeModal
         open={modal.type === "code"}
         files={modal.files}

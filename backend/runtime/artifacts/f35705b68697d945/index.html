@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cherry Puzzle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navigation */
+        nav {
+            background-color: rgba(251, 251, 253, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 0 22px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-content {
+            max-width: 980px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-weight: 600;
+            font-size: 21px;
+            color: #e60012; /* Cherry red */
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .timer {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #e60012;
+        }
+
+        .puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 4px;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto 20px;
+            background-color: #ffd700; /* Yellow */
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .tile {
+            background-color: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            user-select: none;
+        }
+
+        .tile:hover {
+            transform: scale(0.98);
+        }
+
+        .empty {
+            background-color: transparent;
+            box-shadow: none;
+            cursor: default;
+        }
+
+        .empty:hover {
+            transform: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            background-color: #e60012;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 980px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #c5000f;
+            transform: scale(1.05);
+        }
+
+        /* Footer */
+        footer {
+            background-color: #f5f5f7;
+            color: #6e6e73;
+            padding: 20px;
+            font-size: 12px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .footer-content {
+            max-width: 980px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .footer-section {
+            margin-bottom: 20px;
+            min-width: 200px;
+        }
+
+        .footer-section h3 {
+            font-size: 12px;
+            color: #1d1d1f;
+            margin-bottom: 10px;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section li {
+            margin-bottom: 5px;
+        }
+
+        .footer-section a {
+            color: #6e6e73;
+            text-decoration: none;
+        }
+
+        .footer-section a:hover {
+            text-decoration: underline;
+        }
+
+        .copyright {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            width: 100%;
+            text-align: center;
+        }
+
+        @media (max-width: 734px) {
+            .footer-content {
+                flex-direction: column;
+            }
+            
+            .puzzle-board {
+                width: 250px;
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-content">
+            <div class="logo">Cherry Puzzle</div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="game-container">
+            <div class="timer" id="timer">00:00</div>
+            <div class="puzzle-board" id="puzzle-board"></div>
+            <div class="controls">
+                <button id="shuffle-btn">Shuffle</button>
+                <button id="reset-btn">Reset</button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Play & Learn</h3>
+                <ul>
+                    <li><a href="#">Puzzle Games</a></li>
+                    <li><a href="#">Brain Teasers</a></li>
+                    <li><a href="#">Logic Games</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Services</h3>
+                <ul>
+                    <li><a href="#">Game Collection</a></li>
+                    <li><a href="#">Premium Puzzles</a></li>
+                    <li><a href="#">Family Sharing</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Account</h3>
+                <ul>
+                    <li><a href="#">Manage Your Account</a></li>
+                    <li><a href="#">Create ID</a></li>
+                    <li><a href="#">Privacy Settings</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>About Cherry Puzzle</h3>
+                <ul>
+                    <li><a href="#">Newsroom</a></li>
+                    <li><a href="#">Game Leadership</a></li>
+                    <li><a href="#">Career Opportunities</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            Copyright © 2023 Cherry Puzzle Inc. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const puzzleBoard = document.getElementById('puzzle-board');
+            const timerElement = document.getElementById('timer');
+            const shuffleBtn = document.getElementById('shuffle-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            
+            let tiles = [];
+            let emptyIndex = 8;
+            let timer = null;
+            let seconds = 0;
+            let gameStarted = false;
+            
+            // Initialize the puzzle
+            function initPuzzle() {
+                puzzleBoard.innerHTML = '';
+                tiles = [];
+                
+                for (let i = 0; i < 8; i++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.textContent = i + 1;
+                    tile.dataset.index = i;
+                    tile.addEventListener('click', () => moveTile(i));
+                    puzzleBoard.appendChild(tile);
+                    tiles.push(tile);
+                }
+                
+                // Add empty tile
+                const emptyTile = document.createElement('div');
+                emptyTile.className = 'tile empty';
+                puzzleBoard.appendChild(emptyTile);
+                tiles.push(emptyTile);
+                
+                // Start with solved state
+                updatePositions();
+            }
+            
+            // Update tile positions based on current state
+            function updatePositions() {
+                tiles.forEach((tile, index) => {
+                    const row = Math.floor(index / 3);
+                    const col = index % 3;
+                    
+                    tile.style.gridRow = row + 1;
+                    tile.style.gridColumn = col + 1;
+                });
+            }
+            
+            // Move a tile if possible
+            function moveTile(index) {
+                if (!gameStarted) {
+                    startTimer();
+                    gameStarted = true;
+                }
+                
+                const row = Math.floor(index / 3);
+                const col = index % 3;
+                const emptyRow = Math.floor(emptyIndex / 3);
+                const emptyCol = emptyIndex % 3;
+                
+                // Check if the tile is adjacent to the empty space
+                if ((Math.abs(row - emptyRow) === 1 && col === emptyCol) || 
+                    (Math.abs(col - emptyCol) === 1 && row === emptyRow)) {
+                    
+                    // Swap positions
+                    [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+                    emptyIndex = index;
+                    
+                    updatePositions();
+                    checkWin();
+                }
+            }
+            
+            // Shuffle the puzzle
+            function shufflePuzzle() {
+                if (timer) {
+                    clearInterval(timer);
+                    timer = null;
+                }
+                
+                seconds = 0;
+                timerElement.textContent = '00:00';
+                gameStarted = false;
+                
+                // Perform random valid moves to shuffle
+                const shuffleMoves = 100 + Math.floor(Math.random() * 100);
+                
+                for (let i = 0; i < shuffleMoves; i++) {
+                    const possibleMoves = [];
+                    const emptyRow = Math.floor(emptyIndex / 3);
+                    const emptyCol = emptyIndex % 3;
+                    
+                    // Check all adjacent positions
+                    if (emptyRow > 0) possibleMoves.push(emptyIndex - 3); // Up
+                    if (emptyRow < 2) possibleMoves.push(emptyIndex + 3); // Down
+                    if (emptyCol > 0) possibleMoves.push(emptyIndex - 1); // Left
+                    if (emptyCol < 2) possibleMoves.push(emptyIndex + 1); // Right
+                    
+                    // Randomly select a move
+                    const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                    
+                    // Swap positions
+                    [tiles[randomMove], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[randomMove]];
+                    emptyIndex = randomMove;
+                }
+                
+                updatePositions();
+            }
+            
+            // Check if the puzzle is solved
+            function checkWin() {
+                for (let i = 0; i < 8; i++) {
+                    if (parseInt(tiles[i].textContent) !== i + 1) {
+                        return;
+                    }
+                }
+                
+                // Puzzle solved!
+                clearInterval(timer);
+                timer = null;
+                
+                setTimeout(() => {
+                    alert(`Congratulations! You solved the puzzle in ${formatTime(seconds)}!`);
+                }, 300);
+            }
+            
+            // Start the timer
+            function startTimer() {
+                if (timer) clearInterval(timer);
+                
+                timer = setInterval(() => {
+                    seconds++;
+                    timerElement.textContent = formatTime(seconds);
+                }, 1000);
+            }
+            
+            // Format time as MM:SS
+            function formatTime(totalSeconds) {
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            // Reset the puzzle to solved state
+            function resetPuzzle() {
+                if (timer) {
+                    clearInterval(timer);
+                    timer = null;
+                }
+                
+                seconds = 0;
+                timerElement.textContent = '00:00';
+                gameStarted = false;
+                
+                // Reset to solved state
+                for (let i = 0; i < 8; i++) {
+                    tiles[i].textContent = i + 1;
+                    tiles[i].className = 'tile';
+                    tiles[i].dataset.index = i;
+                }
+                
+                tiles[8].className = 'tile empty';
+                emptyIndex = 8;
+                
+                updatePositions();
+            }
+            
+            // Event listeners
+            shuffleBtn.addEventListener('click', shufflePuzzle);
+            resetBtn.addEventListener('click', resetPuzzle);
+            
+            // Initialize the game
+            initPuzzle();
+            shufflePuzzle();
+        });
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

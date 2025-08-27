@@ -1852,7 +1852,7 @@ function SurfersApp() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.pdf,.doc,.docx,.md,.json,.js,.ts,.html,.css,.jsx,.tsx,.py,.java,.c,.cpp,.cs"
+                accept=".txt,.pdf,.doc,.docx,.md,.json,.js,.ts,.html,.css,.jsx,.tsx,.py,.java,.c,.cpp,.cs, .pmg, .jpg, .jpeg, .mp3, .mp4, .gif"
                 multiple
                 className="hidden"
                 onChange={onFilesPicked}
@@ -1887,7 +1887,7 @@ function SurfersApp() {
 <button
   onClick={() => setView("home")}
   aria-label="back"
-  className="fixed top-5 left-5 z-10"
+  className="fixed top-5 sm:left-20vw] lg:left-[20vw]  z-10"
 >
   <img src="/back.png" alt="back" className="h-4 w-4 rotate-315" />
 </button>
@@ -1899,7 +1899,7 @@ function SurfersApp() {
 <main className="relative z-10 lex fitems-center justify-center">
           <main className="flex-1">
             <Container className="min-h-[70vh] flex flex-col items-center justify-center text-center leading-[0.8]">
-              <h1 className="text-[#FFFFFF] text-[32px] sm:text-[39px] font-bold mb-1">
+              <h1 className="text-[#FFFFFF] text-[28px] sm:text-[34px] font-bold mb-1">
                 account?
               </h1>
               <div className="text-[#FFFFFF] text-[48px] sm:text-[58px] font-bold mt-0.5 mb-2">

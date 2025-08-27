@@ -1805,7 +1805,7 @@ function SurfersApp() {
               backgroundRepeat: "no-repeat",
             }}
           />
-          <div className="fixed inset-0 z-0 bg-black/40 " aria-hidden="true" />
+          <div className="fixed inset-0 z-0 bg-black/50 " aria-hidden="true" />
 
           <header className="pt-4 ">
             <Container>

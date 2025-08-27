@@ -1,6 +1,6 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAy4AbBBX6VdlqoOP5N0TenqGCdnIlBlxU",
@@ -11,6 +11,7 @@ const firebaseConfig = {
   appId: "1:44214706885:web:7b5c5dd0368431f937c6ac",
 };
 
+signInWithRedirect(auth, provider);
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();

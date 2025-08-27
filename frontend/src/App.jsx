@@ -1877,7 +1877,7 @@ function SurfersApp() {
     backgroundRepeat: "no-repeat",
   }}
 />
-<div className="fixed inset-0 z-0 bg-black/55 " aria-hidden="true" />
+<div className="fixed inset-0 z-0 bg-black/40 " aria-hidden="true" />
    
 
           <header className="pt-4 ">
@@ -1921,7 +1921,7 @@ function SurfersApp() {
               </button>
 
               <div className="mt-3 text-sm text-[#C7C7C7]">
-                issues logging in? <span className="cursor-pointer text-[#FFFFFF]">get to us</span>
+                issues logging in? <span className="cursor-pointer text-[#FFFFFF]">mail us</span>
               </div>
             </Container>
           </main>
@@ -2214,7 +2214,7 @@ function SurfersApp() {
         <footer className="relative z-10 pb-[22px]">
           <Container>
             <p className="mx-auto text-center text-[14.5px] font-[400] leading-[20px] text-[#FFFFFF] font-wixmadefor">
-              your ideas live in seconds. surfers codes anything better. faster. • 2025 © surfers.
+              ideas live in seconds. surfers codes anything for you. surfers © 2025.
             </p>
           </Container>
         </footer>

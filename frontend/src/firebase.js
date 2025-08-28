@@ -5,7 +5,7 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 // Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyAy4AbBBX6VdlqoOP5N0TenqGCdnIlBlxU",
-  authDomain: "aurfers.co.in",
+  authDomain: "surfers.co.in",
   projectId: "surfers-c103d",
   storageBucket: "surfers-c103d.firebasestorage.app",
   messagingSenderId: "44214706885",

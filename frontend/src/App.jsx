@@ -613,7 +613,8 @@ function makeStreamIngestor(onText, onDone) {
   let mode = "unknown";
   let buf = "";
 
-  const stripDone = (s = "") => s.replace(/^\s*(?:data:\s*)?\[DONE\]\s*$/gm, "");
+  const stripDone = (s = "") => s.replace(/\[DONE\]/g, "");
+
 
   function handleRaw(s) {
     const c = stripDone(s);
@@ -847,7 +848,7 @@ const LiveModal = ({
           ×
         </button>
 
-        <h2 className="text-[48px] font-extrabold tracking-tight mb-6">
+        <h2 className="text-[48px] font-bold tracking-tight mb-6">
           <span className="text-[#333]">go live.</span>{" "}
           <span className="text-[#ff354a]">yeah.</span>
         </h2>
@@ -1763,7 +1764,7 @@ function SurfersApp() {
                     aria-label="send"
                     disabled={loading}
                     className={`h-[32px] w-[32px] rounded-full text-[#FFFFFF] ${
-                      loading ? "bg-[#2A2A2B] text-[#9AA0A6]" : "bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2]"
+                      loading ? "bg-[#2A2A2B] text-[#9AA0A6]" : "bg-[#1A1A1B] hover:bg-[#232325] text-[#0E0E0E]"
                     } flex text-[24px] items-center justify-center transition-colors`}
                   >
                     {loading ? "…" : "↑"}
@@ -1887,9 +1888,8 @@ function SurfersApp() {
                   (isAssistant ? "_generated code ready — use the buttons below._" : "");
 
                 // show message + 3 buttons ONLY if this assistant message actually contains code
-                const hasCodeForMsg =
-                  isAssistant && extractFilesFromText(m.content || "").some(f => (f.code || "").trim());
-
+                const hasCodeForMsg = isAssistant && outputHasActualCode(m.content || "");
+                
                 const canShowInline = hasCodeForMsg && !isStreaming;
 
                 return (
@@ -1904,8 +1904,9 @@ function SurfersApp() {
                     }}
                   >
                     <div
-                      className={`max-w-[720px] rounded-2xl px-4 py-3 leading-6 ${
-                        isAssistant ? "bg-transparent text-[#FFFFFF]" : "bg-[#FFFFFF] text-[#1A1A1B]"
+                      className={`max-w-[560px] items-center rounded-2xl px-5.5 py-3
+                        mb-3.5 leading-6 ${
+                        isAssistant ? "bg-transparent text-[#FFFFFF]" : "bg-[#171717] text-[#FFFFFF]"
                       }`}
                       style={{
                         overflowWrap: "anywhere",
@@ -1914,6 +1915,7 @@ function SurfersApp() {
                         transform: "translateZ(0)",
                       }}
                     >
+                      
                       {isAssistant ? (
                         hasContent ? (
                           <>
@@ -1922,29 +1924,31 @@ function SurfersApp() {
                             {/* The line + 3 buttons — appear ONLY when code exists, and align with prompt box (max-w 560). */}
                             {canShowInline && (
                               
-                              <div className="w-full max-w-[560px] mx-auto text-center mt-4">
-  <p className="text-[16px] leading-5 text-[#FFFFFF] opacity-90 mb-3">
+                              <div className=" max-w-auto mx-auto items-center justify-center text-center mt-4">
+  <p className="text-[16px] font-regular mt-10 leading-5 text-[#FFFFFF] mb-3">
+   
+
     See the code, view to see the site or go live or ask surfers for anything.
   </p>
   <div className="flex gap-3">
     <button
       type="button"
       onClick={() => openCodeModal(m.id)}
-      className="flex-1 h-10 rounded-full bg-[#FFFFFF] text-[#2E2E2E]"
+      className="flex-1 h-10 rounded-full font-medium bg-[#FFFFFF] text-[#2E2E2E]"
     >
       code
     </button>
     <button
       type="button"
       onClick={() => openViewModal(m.id)}
-      className="flex-1 h-10 rounded-full bg-[#FFFFFF] text-[#2E2E2E]"
+      className="flex-1 h-10 rounded-full font-medium bg-[#FFFFFF] text-[#2E2E2E]"
     >
       view
     </button>
     <button
       type="button"
       onClick={() => openLiveModal(m.id)}
-      className="flex-1 h-10 rounded-full bg-[#FFFFFF] text-[#2E2E2E]"
+      className="flex-1 h-10 rounded-full font-medium bg-[#FFFFFF] text-[#2E2E2E]"
     >
       go live
     </button>
@@ -1976,9 +1980,10 @@ function SurfersApp() {
           {/* Chat PROMPT — exact copy of Home prompt box. Not inside Rail. */}
           <div className="fixed left-0 right-0 bottom-0  from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6 bg-[#0E0E0E]">
             <Container>
-              <form ref={chatFormRef} onSubmit={sendFromChat} className="w-full max-w-[560px] mx-auto prompt-textarea">
+             <form ref={chatFormRef} onSubmit={sendFromChat} className="w-full max-w-[560px] mx-auto">
+
                 <div
-                  className="relative bg-[#FFFFFF] border-[#2A2A2A] rounded-[32px]
+                  className="relative ] border-[#4E4E4E] border-[1px] rounded-[32px] prompt-textarea
                              px-[25px] pt-[15px] pb-[65px]
                              shadow-[0_12px_36px_rgba(0,0,0,0.45)]"
                 >
@@ -1994,25 +1999,28 @@ function SurfersApp() {
                         chatFormRef.current?.requestSubmit();
                       }
                     }}
-                    placeholder="ideas? let's build that"
-                    className="w-full bg-transparent outline-none text-[18px] leading-[20px] text-[#191919] resize-none break-all"
-                    style={{ maxHeight: `${MAX_TA_HEIGHT}px`, overflowY: "auto", overflowWrap: "anywhere" }}
-                  />
+                    placeholder="idea? let's build that"
+                    className="w-full prompt-textchatarea outline-none text-[18px] leading-[20px] text-[#FFFFFF] resize-none break-all"
+                   style={{ maxHeight: `${MAX_TA_HEIGHT}px`, overflowY: "hidden", overflowWrap: "anywhere" }}
+             
+                />
 
+
+                  
                   <div className="absolute left-[18px] right-[18px] bottom-[12px] flex items-center justify-between">
                     {/* Plain attach from PC (no figma/images menu) */}
                     <button
                       type="button"
                       aria-label="attach file"
                       onClick={() => chatFileInputRef.current?.click()}
-                      className="text-[#212121] text-[28px] leading-none transition-colors"
+                      className="text-[#FFFFFF] text-[28px] leading-none transition-colors"
                     >
                       +
                     </button>
 
                     <button
                       type="submit"
-                      className="h-[32px] w-[32px] rounded-full bg-[#1A1A1B] hover:bg-[#232325] text-[#DADDE2] flex items-center justify-center transition-colors text-[24px]"
+                      className="h-[32px] w-[32px] rounded-full bg-[#FFFFFF] hover:bg-[#FFFFFF] text-[#0E0E0E] flex items-center justify-center transition-colors text-[24px]"
                       aria-label="send"
                     >
                       ↑

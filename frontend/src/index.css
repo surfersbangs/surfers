@@ -14,3 +14,8 @@ body {
   scrollbar-color: #b8b8b8 transparent;
 
 }
+
+.prompt-textchatarea{
+  scrollbar-width: thin;
+  scrollbar-color: #272727 transparent;
+}

@@ -1,0 +1,15 @@
+<!DOCTYPE html><html><head><title>Letter to Teacher</title><style>body{font-family:sans-serif;max-width:600px;margin:40px auto;line-height:1.6}</style></head><body><p>Hi [Teacher's Name],</p><p>Hope you're doing well! I wanted to quickly check in about [student's name]'s progress in class. They've been really enjoying your lessons lately, especially the science experiments last week.</p><p>Just wanted to see if there's anything we should be working on at home to help them keep up the good work. Also, wanted to thank you for being so patient with them - it means a lot!</p><p>Thanks so much,<br>[Your Name]</p><p>PS: Let me know if there's a good time to chat briefly!</p>
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body></html>

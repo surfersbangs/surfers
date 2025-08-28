@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>surfers preview</title>
+  <style>html,body,#app{height:100%;margin:0} body{background:#0b0b0c;color:#ededed;font-family:Inter,system-ui,sans-serif}</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+<h1>Hello World</h1>
+<p>This is a simple HTML example.</p>
+
+  </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

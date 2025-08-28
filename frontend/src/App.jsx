@@ -12,6 +12,9 @@ import remarkGfm from "remark-gfm";
 import "highlight.js/styles/github-dark-dimmed.css";
 
 import React from "react";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
+
 
 /* =========================
    Error Boundary
@@ -188,13 +191,14 @@ function CodeBlock({ inline, className, children, ...props }) {
   }
 
   return (
-    <pre className="mb-3 rounded-[12px] bg-[#0f0f10] border border-[#2A2A2A] overflow-x-auto">
-      <code
-        ref={codeRef}
-        style={{ background: "transparent" }}
-        className={`block p-3 ${className || ""}`}
-      />
-    </pre>
+   <pre className="overflow-x-auto">
+  <code
+    ref={codeRef}
+    style={{ background: "transparent" }}
+    className={`block p-3 text-[#EDEDED] ${className || ""}`}
+  />
+</pre>
+
   );
 }
 
@@ -715,13 +719,7 @@ function makeStreamIngestor(onText, onDone) {
 
 const Overlay = ({ children, onClose }) => (
   <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70">
-    <button
-      aria-label="close overlay"
-      onClick={onClose}
-      className="fixed top-4 right-4 h-9 w-9 rounded-full bg-[#1a1a1b] text-[#e5e7eb] hover:bg-[#232325]"
-    >
-      ×
-    </button>
+   
     {children}
   </div>
 );
@@ -738,15 +736,29 @@ const ViewModal = ({ open, url, onClose }) => {
   })();
   return (
     <Overlay onClose={onClose}>
-      <div className="w-[min(1050px,95vw)] h-[min(86vh,820px)] rounded-2xl overflow-hidden shadow-2xl border border-[#2A2A2A] bg-[#1b1b1c]">
-        <div className="h-10 flex items-center justify-center bg-[#2a2a2b] text-[#d2d5db] text-sm relative">
-          <div className="absolute left-3 top-0 h-10 flex items-center gap-1">
-            <span className="inline-block h-3 w-3 rounded-full bg-[#ff5f57]" />
-            <span className="inline-block h-3 w-3 rounded-full bg-[#febc2e]" />
-            <span className="inline-block h-3 w-3 rounded-full bg-[#28c840]" />
-          </div>
-          <span className="opacity-80">{label || "preview"}</span>
-        </div>
+      <div className="w-[min(1050px,95vw)] h-[min(86vh,820px)] rounded-2xl overflow-hidden shadow-2xl  border border-[#424242] bg-[#1b1b1c]">
+        {/* White top bar with URL + lock */}
+{/* White top bar with centered lock + URL */}
+<div className="relative h-10 bg-white text-[#111] flex items-center justify-center rounded-t-2xl border-b border-[#E5E7EB]">
+  {/* Centered lock + URL */}
+  <div className="flex items-center  gap-2 text-[15px] text-[#0A0A0A] font-medium">
+    <img src="/lock.png" alt="secure" className="h-3.5 w-3.5" />
+    <span className="opacity-90">{label || "localhost/surfers/view"}</span>
+  </div>
+
+  {/* Close button (top right, plain ×) */}
+  <button
+    aria-label="close"
+    onClick={onClose}
+    className="absolute right-3 px -3 top-1/2 -translate-y-1/2 text-[28px] opacity-80 leading-none"
+    title="Close"
+  >
+    ×
+  </button>
+</div>
+
+
+
         <div className="w-full h-[calc(100%-40px)] bg-[#0f0f10]">
           {url ? (
             <iframe
@@ -780,33 +792,79 @@ const CodeModal = ({ open, files = [], lang, code, onClose }) => {
   const fallbackName = defaultNameForLang(normalizeLang(lang || "plaintext"));
   const tabFiles = hasFiles ? files : [{ name: fallbackName, lang: normalizeLang(lang || "plaintext"), code: code || "" }];
   const shown = tabFiles[Math.min(active, tabFiles.length - 1)];
+  const handleZipDownload = async () => {
+  try {
+    const zip = new JSZip();
+    zip.file("README.txt", "Exported from Surfers CodeModal\n");
+    tabFiles.forEach((f, idx) => {
+      const name = (f.name && f.name.trim()) || defaultNameForLang(f.lang || "plaintext", idx);
+      zip.file(name, f.code ?? "");
+    });
+    const blob = await zip.generateAsync({ type: "blob" });
+    saveAs(blob, "surfers-export.zip");
+  } catch (e) {
+    console.error("zip error", e);
+    alert("Failed to create ZIP. See console for details.");
+  }
+};
+
 
   return (
     <Overlay onClose={onClose}>
-      <div className="w-[min(980px,94vw)] h-[min(82vh,760px)] rounded-2xl overflow-hidden shadow-2xl border border-[#2A2A2A] bg-[#111214]">
-        <div className="h-10 bg-[#1b1b1c] border-b border-[#2A2A2A] flex items-center">
-          <div className="px-3 text-xs text-[#9aa0a6]">download as ZIP</div>
-          <div className="ml-2 flex items-center gap-2 text-sm overflow-x-auto">
-            {tabFiles.map((f, idx) => (
-              <button
-                key={`${f.name}-${idx}`}
-                type="button"
-                onClick={() => setActive(idx)}
-                className={
-                  idx === active
-                    ? "px-3 py-1 bg-[#0f0f10] text-[#e5e7eb] rounded-t-md border-x border-t border-[#2A2A2A]"
-                    : "px-3 py-1 text-[#9aa0a6]"
-                }
-                title={f.name}
-              >
-                {f.name}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="w-full h-[calc(100%-40px)] overflow-auto">
+     <div className="w-[min(980px,94vw)] h-[min(82vh,760px)] rounded-2xl overflow-hidden shadow-2xl bg-[#111214]">
+
+        {/* White top bar */}
+        
+<div className="relative h-9 bg-[#0A0A0A] text-[#FFFFFF] flex items-center py-1 px-3 justify-center rounded-t-2xl">
+  {/* left: download (icon + label) */}
+  <button
+    type="button"
+    onClick={handleZipDownload}
+    className="absolute left-3 top-1/2 -translate-y-1/2 inline-flex items-center px-3 gap-2 font-regular text-[15px]"
+  >
+    
+    <span>download files</span>
+  </button>
+
+  {/* centered title */}
+  <span className="text-[16px] font-regular">&lt;code/&gt;</span>
+
+  {/* right: plain close (no hover styles/colors) */}
+  <button
+    aria-label="close"
+    onClick={onClose}
+    className="absolute right-3 px -3 top-1/2 -translate-y-1/2 text-[28px] opacity-80 leading-none"
+    title="Close"
+  >
+    ×
+  </button>
+</div>
+
+
+  {/* Tabs row */}
+<div className="h-9] text-[15px] bg-[#151515] flex font-medium items-center gap-2 px-3 py-1 overflow-x-auto">
+  {tabFiles.map((f, idx) => (
+    <button
+      key={`${f.name}-${idx}`}
+      type="button"
+      onClick={() => setActive(idx)}
+      className={
+        (idx === active
+          ? " text-[#FFFFFF]"
+          : "text-[#9F9F9F]") +
+        " inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] shrink-0"
+      }
+      title={f.name}
+    >
+      <span className="whitespace-nowrap">{f.name}</span>
+    </button>
+  ))}
+</div>
+
+        <div className="w-full bg-[#0A0A0A] h-[calc(100%-40px-36px)] overflow-auto">
+
           {shown?.code ? (
-            <div className="p-4 h-full overflow-y-auto">
+            <div className="py-3 px-2 h-full overflow-y-auto">
               <Markdown>
                 {`\`\`\`${shown.lang || ""}\n${shown.code}\n\`\`\``}
               </Markdown>
@@ -828,154 +886,81 @@ const LiveModal = ({
   busy,
   note,
   onPublish,
-  baseSuffix = ".surfers.co.in",
-  onCheck,
   avail,
-  onCopy,
-  copied,
   liveUrl,
+  checkAvailability,
 }) => {
   if (!open) return null;
-  const full = slug ? `${slug}${baseSuffix}` : `project-name${baseSuffix}`;
   return (
-    <Overlay onClose={onClose}>
-      <div className="w-[min(720px,92vw)] rounded-2xl bg-white text-[#222] shadow-2xl p-8 relative">
-        <button
-          aria-label="close"
-          onClick={onClose}
-          className="absolute right-5 top-5 text-2xl leading-none text-[#6b7280] hover:text-[#111]"
-        >
-          ×
-        </button>
+  <Overlay onClose={onClose}>
+    <div className="w-[min(480px,92vw)] rounded-2xl bg-white text-[#222] shadow-2xl p-8 relative text-center">
+      {/* Close button */}
+      <button
+        aria-label="close"
+        onClick={onClose}
+        className="absolute right-5 top-5 text-2xl leading-none text-[#444]"
+      >
+        ×
+      </button>
 
-        <h2 className="text-[48px] font-bold tracking-tight mb-6">
-          <span className="text-[#333]">go live.</span>{" "}
-          <span className="text-[#ff354a]">yeah.</span>
-        </h2>
+      {/* Heading */}
+      <h2 className="mb-8">
+        <div className="text-[32px] font-bold text-[#191919] leading-none">go.</div>
+        <div className="text-[48px] font-bold text-[#191919] leading-none">fast.</div>
+      </h2>
 
-        <div className="mb-2">
-          <div className="flex items-stretch gap-2">
-            <div className="flex-1 relative">
-              <input
-                value={slug}
-                onChange={(e) =>
-                  setSlug(
-                    e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase()
-                  )
-                }
-                placeholder="project-name"
-                className="w-full h-12 rounded-xl border border-gray-300 px-4 pr-[160px] text-lg outline-none focus:ring-2 focus:ring-red-400"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 select-none">
-                {baseSuffix}
-              </div>
-            </div>
-
-            <button
-              onClick={onCopy}
-              className={`h-12 w-12 rounded-xl border ${
-                copied
-                  ? "bg-blue-600 border-blue-600 text-white"
-                  : "border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
-              }`}
-              title="copy full domain"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="mx-auto">
-                <rect
-                  x="9"
-                  y="9"
-                  width="11"
-                  height="11"
-                  rx="2"
-                  stroke={copied ? "#fff" : "#6b7280"}
-                  strokeWidth="1.6"
-                />
-                <rect
-                  x="4"
-                  y="4"
-                  width="11"
-                  height="11"
-                  rx="2"
-                  stroke={copied ? "#fff" : "#6b7280"}
-                  strokeWidth="1.6"
-                  opacity="0.7"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div className="mt-2">
-            <button
-              onClick={onCheck}
-              className="text-[#1a73e8] text-sm underline underline-offset-2"
-              type="button"
-            >
-              check the availability of domain
-            </button>
-            {avail === "free" && (
-              <span className="ml-2 text-green-600 text-sm">available ✓</span>
-            )}
-            {avail === "taken" && (
-              <span className="ml-2 text-red-600 text-sm">already in use</span>
-            )}
-          </div>
-        </div>
-
-        <button
-          onClick={onPublish}
-          disabled={busy || !slug}
-          className={`mt-4 w-full h-14 rounded-xl text-white text-lg font-semibold ${
-            busy ? "bg-red-300" : "bg-[#EF3A3A] hover:bg-[#ff3d3d]"
-          }`}
-        >
-          {"go live. fast. dude"}
-        </button>
-
-        {liveUrl && (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-300 bg-gray-50 p-3">
-            <div className="text-sm text-gray-700">live link:</div>
-            <a
-              href={liveUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 text-[#1a73e8] underline"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path
-                  d="M14 5h5v5"
-                  stroke="#1a73e8"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M10 14L19 5"
-                  stroke="#1a73e8"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M19 14v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"
-                  stroke="#1a73e8"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="break-all">{liveUrl}</span>
-            </a>
-          </div>
-        )}
-
-        <p className="text-gray-600 mt-4">
-          making your website live will enable anyone to use it anywhere.
-        </p>
-
-        {note && <p className="mt-3 text-sm text-gray-700">{note}</p>}
+      {/* Input box */}
+      <div className="mb-3">
+        <input
+          value={slug}
+          onChange={(e) => {
+            const val = e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+            setSlug(val);
+            checkAvailability(val); // auto-check while typing
+          }}
+          placeholder="project-name"
+          className="w-full h-12 rounded-full border border-gray-300 text-center text-lg font-medium outline-none focus:ring-2 focus:ring-black"
+        />
       </div>
-    </Overlay>
-  );
+
+      {/* Availability text */}
+      {avail === "free" && (
+        <div className="text-sm text-[#1a73e8] mb-5">name available</div>
+      )}
+      {avail === "taken" && (
+        <div className="text-sm text-red-500 mb-5">name taken</div>
+      )}
+      {!avail && (
+        <div className="text-sm text-gray-400 mb-5">type to check availability</div>
+      )}
+
+      {/* Go live button */}
+      <button
+        onClick={onPublish}
+        disabled={busy || !slug || avail === "taken"}
+        className="mt-2 w-full h-12 rounded-full bg-black text-white text-lg font-semibold disabled:opacity-50"
+      >
+        go live
+      </button>
+
+      {/* Show link after publish */}
+      {liveUrl && (
+        <div className="mt-5 text-sm text-[#191919]">
+          your site is live on{" "}
+          <a
+            href={liveUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline text-[#1a73e8]"
+          >
+            {liveUrl}
+          </a>
+        </div>
+      )}
+    </div>
+  </Overlay>
+);
+
 };
 
 /* =========================
@@ -1616,29 +1601,25 @@ function SurfersApp() {
     }
   };
 
-  const checkAvailability = async () => {
-    const slug = liveSlug
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9-]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
-    if (!slug) {
-      setLiveAvail(null);
-      return;
-    }
-    try {
-      const res = await fetch(`${API_URL}/live/${slug}/`, { method: "HEAD" });
-      setLiveAvail(res.ok ? "taken" : "free");
-    } catch {
-      try {
-        const res2 = await fetch(`${API_URL}/live/${slug}/`, { method: "GET" });
-        setLiveAvail(res2.ok ? "taken" : "free");
-      } catch {
-        setLiveAvail(null);
-      }
-    }
-  };
+  const checkAvailability = async (slugVal) => {
+  const slug = (slugVal || liveSlug || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  if (!slug) {
+    setLiveAvail(null);
+    return;
+  }
+  try {
+    const res = await fetch(`${API_URL}/live/${slug}/`, { method: "HEAD" });
+    setLiveAvail(res.ok ? "taken" : "free");
+  } catch {
+    setLiveAvail(null);
+  }
+};
+
 
   const copySlugFull = async () => {
     const full = `${liveSlug}${SUBDOMAIN_SUFFIX}`;
@@ -2063,20 +2044,18 @@ function SurfersApp() {
       />
       <ViewModal open={modal.type === "view"} url={modal.url} onClose={closeModal} />
       <LiveModal
-        open={modal.type === "live"}
-        onClose={closeModal}
-        slug={liveSlug}
-        setSlug={setLiveSlug}
-        busy={liveBusy}
-        note={modal.note}
-        onPublish={publishCurrent}
-        onCheck={checkAvailability}
-        avail={liveAvail}
-        onCopy={copySlugFull}
-        copied={copiedSlug}
-        liveUrl={liveResultUrl}
-        baseSuffix={SUBDOMAIN_SUFFIX}
-      />
+  open={modal.type === "live"}
+  onClose={closeModal}
+  slug={liveSlug}
+  setSlug={setLiveSlug}
+  busy={liveBusy}
+  note={modal.note}
+  onPublish={publishCurrent}
+  avail={liveAvail}
+  liveUrl={liveResultUrl}
+  checkAvailability={checkAvailability}
+/>
+
     </div>
   );
 }

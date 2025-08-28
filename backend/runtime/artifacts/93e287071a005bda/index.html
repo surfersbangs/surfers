@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elegant 3x3 Puzzle</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+            color: #ecf0f1;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            color: #e74c3c;
+        }
+
+        .puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 8px;
+            margin: 20px auto;
+        }
+
+        .tile {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .empty {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+            cursor: default;
+        }
+
+        .empty:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .win-message {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
+            color: #2ecc71;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .win-message.show {
+            opacity: 1;
+        }
+
+        .moves-counter {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>ELEGANT PUZZLE</h1>
+        <div class="puzzle-board" id="puzzleBoard"></div>
+        <div class="moves-counter">Moves: <span id="moves">0</span></div>
+        <div class="controls">
+            <button onclick="shufflePuzzle()">Shuffle</button>
+            <button onclick="resetGame()">New Game</button>
+        </div>
+        <div class="win-message" id="winMessage">Congratulations! Puzzle solved!</div>
+    </div>
+
+    <script>
+        const puzzleBoard = document.getElementById('puzzleBoard');
+        const movesCounter = document.getElementById('moves');
+        const winMessage = document.getElementById('winMessage');
+        let moves = 0;
+        let gameState = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+        const solvedState = [1, 2, 3, 4, 5, 6, 7, 8, 0];
+
+        function initializeGame() {
+            puzzleBoard.innerHTML = '';
+            gameState.forEach((value, index) => {
+                const tile = document.createElement('div');
+                tile.className = value === 0 ? 'tile empty' : 'tile';
+                tile.textContent = value === 0 ? '' : value;
+                tile.addEventListener('click', () => moveTile(index));
+                puzzleBoard.appendChild(tile);
+            });
+            updateMoves();
+            winMessage.classList.remove('show');
+        }
+
+        function moveTile(index) {
+            if (gameState[index] === 0) return;
+
+            const emptyIndex = gameState.indexOf(0);
+            const row = Math.floor(index / 3);
+            const col = index % 3;
+            const emptyRow = Math.floor(emptyIndex / 3);
+            const emptyCol = emptyIndex % 3;
+
+            if ((row === emptyRow && Math.abs(col - emptyCol) === 1) ||
+                (col === emptyCol && Math.abs(row - emptyRow) === 1)) {
+                [gameState[index], gameState[emptyIndex]] = [gameState[emptyIndex], gameState[index]];
+                moves++;
+                updateMoves();
+                initializeGame();
+                checkWin();
+            }
+        }
+
+        function shufflePuzzle() {
+            for (let i = 0; i < 1000; i++) {
+                const emptyIndex = gameState.indexOf(0);
+                const possibleMoves = [];
+                const row = Math.floor(emptyIndex / 3);
+                const col = emptyIndex % 3;
+
+                if (row > 0) possibleMoves.push(emptyIndex - 3);
+                if (row < 2) possibleMoves.push(emptyIndex + 3);
+                if (col > 0) possibleMoves.push(emptyIndex - 1);
+                if (col < 2) possibleMoves.push(emptyIndex + 1);
+
+                const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                [gameState[emptyIndex], gameState[randomMove]] = [gameState[randomMove], gameState[emptyIndex]];
+            }
+            moves = 0;
+            initializeGame();
+        }
+
+        function resetGame() {
+            gameState = [...solvedState];
+            moves = 0;
+            shufflePuzzle();
+        }
+
+        function checkWin() {
+            if (JSON.stringify(gameState) === JSON.stringify(solvedState)) {
+                winMessage.classList.add('show');
+            }
+        }
+
+        function updateMoves() {
+            movesCounter.textContent = moves;
+        }
+
+        // Initialize the game
+        shufflePuzzle();
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

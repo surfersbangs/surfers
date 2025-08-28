@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<canvas id="game" width="400" height="300"></canvas>
+<script>
+  let x = 100, y = 100, score = 0;
+  const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+  setInterval(() => { ctx.clearRect(0, 0, 400, 300); x += Math.random() * 6 - 3; y += Math.random() * 6 - 3; ctx.fillStyle = 'blue'; ctx.fillRect(x, y, 30, 30); }, 100);
+  canvas.onclick = e => { if (e.offsetX > x && e.offsetX < x + 30 && e.offsetY > y && e.offsetY < y + 30) score++, x = Math.random() * 370, y = Math.random() * 270; document.title = 'Score: ' + score; };
+</script>
+```
+
+**How to play:**
+- Click the blue square to score points.
+- The square moves randomly—try to keep up!
+- Your score updates in the browser tab title.
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>

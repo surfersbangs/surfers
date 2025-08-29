@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Color Picker</title>
+  <style>
+    body { text-align: center; padding: 50px; }
+    input { margin: 20px; }
+    #colorBox { width: 100px; height: 100px; margin: 0 auto; border: 2px solid #000; }
+  </style>
+</head>
+<body>
+  <h2>Pick a Color</h2>
+  <input type="color" id="colorPicker">
+  <div id="colorBox"></div>
+  <script>
+    document.getElementById('colorPicker').addEventListener('input', function(e) {
+      document.getElementById('colorBox').style.backgroundColor = e.target.value;
+    });
+  </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

@@ -182,7 +182,7 @@ function CodeBlock({ inline, className, children, ...props }) {
   if (inline || isSingleLine) {
     return (
       <code
-        className="px-1.5 py-0.5 rounded bg-[#151517] border border-[#2A2A2A] text-sm"
+        className="px-1.5 py-0.5 rounded bg-[#0A0A0A] border border-[#C8C103] text-sm text-[#0A0A0A]"
         {...props}
       >
         {raw}
@@ -847,9 +847,9 @@ const CodeModal = ({ open, files = [], lang, code, onClose }) => {
       </div>
 
       {/* Code area */}
-      <div className="flex-1 bg-[#0F0F0F]  flex flex-col">
+      <div className="flex-1 bg-[#0F0F0F] overflow-auto custom-scroll">
         {shown?.code ? (
-          <div className="flex-1 overflow-auto custom-scroll">
+          <div className="p-3 flex-1">
             <Markdown>{`\`\`\`${shown.lang || ""}\n${shown.code}\n\`\`\``}</Markdown>
           </div>
         ) : (
@@ -930,8 +930,8 @@ const LiveModal = ({
 
       {/* Show link after publish */}
       {liveUrl && (
-        <div className="mt-5 text-sm text-[#191919]">
-          your site is live on{" "}
+        <div className="mt-5 text-[19px] font-medium text-[#0A0A0A]">
+          your site is live on <br />{" "}
           <a
             href={liveUrl}
             target="_blank"
@@ -1802,7 +1802,7 @@ function SurfersApp() {
 
                 <button
                   onClick={handleGoogleLogin}
-                  className="mt-6.5 h-10.5 px-20 rounded-full bg-white text-[16.5px] font-[500] text-[#484848] inline-flex items-center gap-3"
+                  className="mt-6.5 h-11 w-full max-w-[320px] rounded-full bg-white text-[16px] font-medium text-[#484848] flex items-center justify-center gap-3"
                 >
                   <img
                     src="/google.png"
@@ -1871,7 +1871,7 @@ function SurfersApp() {
                     }}
                   >
                     <div
-                      className={`max-w-[625px] items-center rounded-2xl px-3.5 py-3
+                      className={`max-w-[560px] items-center rounded-2xl px-3.5 py-3
                         mb-3.5 mt-5 leading-6 ${
                         isAssistant ? "bg-transparent text-[#0A0A0A]" : "bg-[#F2EA0E] text-[#0A0A0A]"
                       }`}

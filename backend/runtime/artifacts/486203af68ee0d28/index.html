@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple Counter</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 50px; }
+    .counter { font-size: 48px; margin: 20px; }
+    button { padding: 10px 20px; font-size: 18px; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Counter App</h1>
+  <div class="counter" id="count">0</div>
+  <button onclick="updateCount(-1)">-</button>
+  <button onclick="updateCount(1)">+</button>
+
+  <script>
+    let count = 0;
+    function updateCount(value) {
+      count += value;
+      document.getElementById('count').textContent = count;
+    }
+  </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

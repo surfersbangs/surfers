@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spectrum | Premium Color Experience</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 48px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+    h1 {
+      font-weight: 600;
+      font-size: 2.5rem;
+      color: #1d1d1f;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      color: #86868b;
+      font-size: 1.1rem;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+    .color-picker {
+      width: 80px;
+      height: 80px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      margin: 30px auto;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .color-picker:hover {
+      transform: scale(1.08);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+    }
+    .color-display {
+      width: 120px;
+      height: 120px;
+      margin: 30px auto;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      transition: all 0.4s ease;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+    }
+    .hex-value {
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: #1d1d1f;
+      margin-top: 20px;
+      font-family: 'Menlo', monospace;
+      letter-spacing: 1px;
+    }
+    .feature-text {
+      color: #86868b;
+      font-size: 0.95rem;
+      margin-top: 8px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Spectrum</h1>
+    <p class="subtitle">Experience color in its purest form. Our advanced picker delivers precision and beauty in perfect harmony.</p>
+    
+    <input type="color" id="colorPicker" class="color-picker" value="#4a6cf7">
+    
+    <div class="color-display" id="colorDisplay"></div>
+    
+    <div class="hex-value" id="hexValue">#4A6CF7</div>
+    <p class="feature-text">Professional-grade color selection with instant visual feedback</p>
+  </div>
+
+  <script>
+    const picker = document.getElementById('colorPicker');
+    const display = document.getElementById('colorDisplay');
+    const hexValue = document.getElementById('hexValue');
+
+    picker.addEventListener('input', (e) => {
+      const color = e.target.value;
+      display.style.backgroundColor = color;
+      hexValue.textContent = color.toUpperCase();
+      
+      // Smooth animation
+      display.style.transform = 'scale(1.05)';
+      setTimeout(() => {
+        display.style.transform = 'scale(1)';
+      }, 150);
+    });
+
+    // Initialize
+    display.style.backgroundColor = picker.value;
+  </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

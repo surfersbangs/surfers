@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Color Picker</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .color-box {
+            width: 200px;
+            height: 200px;
+            border: 2px solid #333;
+            margin: 20px;
+            transition: background-color 0.3s;
+        }
+        input {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="color-box" id="colorBox"></div>
+    <input type="color" id="colorPicker" value="#ff6b6b">
+    <script>
+        const picker = document.getElementById('colorPicker');
+        const box = document.getElementById('colorBox');
+        picker.addEventListener('input', () => {
+            box.style.backgroundColor = picker.value;
+        });
+        box.style.backgroundColor = picker.value;
+    </script>
+
+<script>
+try{
+  window.addEventListener('message', function(e){
+    if(e && e.data === 'surfers:reload'){ location.reload(); }
+  });
+  if (window.parent) {
+    window.parent.postMessage({type:'surfers:ready'}, '*');
+  }
+  window.addEventListener('error', function(e){
+    try { window.parent && window.parent.postMessage({type:'surfers:error', msg: String(e.error||e.message) }, '*'); } catch(e){}
+  });
+} catch(e){}
+</script>
+</body>
+</html>

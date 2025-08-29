@@ -19,3 +19,10 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #272727 transparent;
 }
+
+.custom-scroll {
+  scrollbar-gutter: stable both-edges;
+  border-radius: 30px;
+  scrollbar-width: thin;
+   scrollbar-color: #343434 transparent;
+}

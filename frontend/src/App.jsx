@@ -191,11 +191,12 @@ function CodeBlock({ inline, className, children, ...props }) {
   }
 
   return (
-   <pre className="overflow-x-auto">
+  <pre className="overflow-x-auto bg-[#0E0E0E] rounded-lg p-3 custom-scroll">
   <code
     ref={codeRef}
-    style={{ background: "transparent" }}
-    className={`block p-3 text-[#EDEDED] ${className || ""}`}
+    style={{ background: "#0A0A0A", borderRadius: 30 }}
+
+    className={`block text-[#EDEDED] ${className || ""}`}
   />
 </pre>
 
@@ -719,10 +720,10 @@ function makeStreamIngestor(onText, onDone) {
 
 const Overlay = ({ children, onClose }) => (
   <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70">
-   
     {children}
   </div>
 );
+
 
 const ViewModal = ({ open, url, onClose }) => {
   if (!open) return null;
@@ -734,50 +735,45 @@ const ViewModal = ({ open, url, onClose }) => {
       return url || "";
     }
   })();
+
   return (
-    <Overlay onClose={onClose}>
-      <div className="w-[min(1050px,95vw)] h-[min(86vh,820px)] rounded-2xl overflow-hidden shadow-2xl  border border-[#424242] bg-[#1b1b1c]">
-        {/* White top bar with URL + lock */}
-{/* White top bar with centered lock + URL */}
-<div className="relative h-10 bg-white text-[#111] flex items-center justify-center rounded-t-2xl border-b border-[#E5E7EB]">
-  {/* Centered lock + URL */}
-  <div className="flex items-center  gap-2 text-[15px] text-[#0A0A0A] font-medium">
-    <img src="/lock.png" alt="secure" className="h-3.5 w-3.5" />
-    <span className="opacity-90">{label || "localhost/surfers/view"}</span>
-  </div>
-
-  {/* Close button (top right, plain ×) */}
-  <button
-    aria-label="close"
-    onClick={onClose}
-    className="absolute right-3 px -3 top-1/2 -translate-y-1/2 text-[28px] opacity-80 leading-none"
-    title="Close"
-  >
-    ×
-  </button>
-</div>
-
-
-
-        <div className="w-full h-[calc(100%-40px)] bg-[#0f0f10]">
-          {url ? (
-            <iframe
-              key={url}
-              src={url}
-              className="w-full h-full"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
-              allow="accelerometer; camera; microphone; clipboard-read; clipboard-write; geolocation; gyroscope; payment; fullscreen"
-              referrerPolicy="no-referrer"
-              title="preview"
-            />
-          ) : (
-            <div className="p-6 text-[#c7cbd2]">building preview…</div>
-          )}
+    <div className="w-[min(1050px,95vw)] h-[min(86vh,820px)] rounded-2xl shadow-2xl border border-[#E5E7EB] bg-white flex flex-col overflow-hidden relative">
+      
+      {/* Top bar */}
+      <div className="h-10 bg-white text-[#111] flex items-center justify-center border-b border-[#E5E7EB] relative">
+        <div className="flex items-center gap-2 text-[15px] font-medium">
+          <img src="/lock.png" alt="secure" className="h-3.5 w-3.5" />
+          <span className="opacity-90">{label || "localhost/surfers/view"}</span>
         </div>
+        <button
+          aria-label="close"
+          onClick={onClose}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-[28px] text-[#111] leading-none hover:opacity-70"
+        >
+          ×
+        </button>
       </div>
-    </Overlay>
+
+      {/* Body (iframe) */}
+      <div className="flex-1 bg-[#FFFFFF]">
+        {url ? (
+          <iframe
+            key={url}
+            src={url}
+            className="w-full h-full"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+            allow="accelerometer; camera; microphone; clipboard-read; clipboard-write; geolocation; gyroscope; payment; fullscreen"
+            referrerPolicy="no-referrer"
+            title="preview"
+          />
+        ) : (
+          <div className="p-6 text-[#0A0A0A]">building preview…</div>
+        )}
+      </div>
+    </div>
   );
 };
+
 
 const CodeModal = ({ open, files = [], lang, code, onClose }) => {
   const [active, setActive] = useState(0);
@@ -790,93 +786,82 @@ const CodeModal = ({ open, files = [], lang, code, onClose }) => {
 
   const hasFiles = Array.isArray(files) && files.length > 0;
   const fallbackName = defaultNameForLang(normalizeLang(lang || "plaintext"));
-  const tabFiles = hasFiles ? files : [{ name: fallbackName, lang: normalizeLang(lang || "plaintext"), code: code || "" }];
+  const tabFiles = hasFiles
+    ? files
+    : [{ name: fallbackName, lang: normalizeLang(lang || "plaintext"), code: code || "" }];
   const shown = tabFiles[Math.min(active, tabFiles.length - 1)];
-  const handleZipDownload = async () => {
-  try {
-    const zip = new JSZip();
-    zip.file("README.txt", "Exported from Surfers CodeModal\n");
-    tabFiles.forEach((f, idx) => {
-      const name = (f.name && f.name.trim()) || defaultNameForLang(f.lang || "plaintext", idx);
-      zip.file(name, f.code ?? "");
-    });
-    const blob = await zip.generateAsync({ type: "blob" });
-    saveAs(blob, "surfers-export.zip");
-  } catch (e) {
-    console.error("zip error", e);
-    alert("Failed to create ZIP. See console for details.");
-  }
-};
 
+  const handleZipDownload = async () => {
+    try {
+      const zip = new JSZip();
+      zip.file("README.txt", "Exported from Surfers CodeModal\n");
+      tabFiles.forEach((f, idx) => {
+        const name =
+          (f.name && f.name.trim()) || defaultNameForLang(f.lang || "plaintext", idx);
+        zip.file(name, f.code ?? "");
+      });
+      const blob = await zip.generateAsync({ type: "blob" });
+      saveAs(blob, "surfers-export.zip");
+    } catch (e) {
+      console.error("zip error", e);
+      alert("Failed to create ZIP. See console for details.");
+    }
+  };
 
   return (
-    <Overlay onClose={onClose}>
-     <div className="w-[min(980px,94vw)] h-[min(82vh,760px)] rounded-2xl overflow-hidden shadow-2xl bg-[#111214]">
-
-        {/* White top bar */}
-        
-<div className="relative h-9 bg-[#0A0A0A] text-[#FFFFFF] flex items-center py-1 px-3 justify-center rounded-t-2xl">
-  {/* left: download (icon + label) */}
-  <button
-    type="button"
-    onClick={handleZipDownload}
-    className="absolute left-3 top-1/2 -translate-y-1/2 inline-flex items-center px-3 gap-2 font-regular text-[15px]"
-  >
-    
-    <span>download files</span>
-  </button>
-
-  {/* centered title */}
-  <span className="text-[16px] font-regular">&lt;code/&gt;</span>
-
-  {/* right: plain close (no hover styles/colors) */}
-  <button
-    aria-label="close"
-    onClick={onClose}
-    className="absolute right-3 px -3 top-1/2 -translate-y-1/2 text-[28px] opacity-80 leading-none"
-    title="Close"
-  >
-    ×
-  </button>
-</div>
-
-
-  {/* Tabs row */}
-<div className="h-9] text-[15px] bg-[#151515] flex font-medium items-center gap-2 px-3 py-1 overflow-x-auto">
-  {tabFiles.map((f, idx) => (
-    <button
-      key={`${f.name}-${idx}`}
-      type="button"
-      onClick={() => setActive(idx)}
-      className={
-        (idx === active
-          ? " text-[#FFFFFF]"
-          : "text-[#9F9F9F]") +
-        " inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[13px] shrink-0"
-      }
-      title={f.name}
-    >
-      <span className="whitespace-nowrap">{f.name}</span>
-    </button>
-  ))}
-</div>
-
-        <div className="w-full bg-[#0A0A0A] h-[calc(100%-40px-36px)] overflow-auto">
-
-          {shown?.code ? (
-            <div className="py-3 px-2 h-full overflow-y-auto">
-              <Markdown>
-                {`\`\`\`${shown.lang || ""}\n${shown.code}\n\`\`\``}
-              </Markdown>
-            </div>
-          ) : (
-            <div className="p-6 text-[#c7cbd2]">No code found in this message.</div>
-          )}
-        </div>
+    <div className="w-[min(980px,94vw)] h-[min(82vh,760px)] rounded-2xl shadow-2xl border border-[#E5E7EB] bg-white flex flex-col overflow-hidden relative">
+      
+      {/* Top bar */}
+      <div className="h-9 bg-white flex items-center justify-center border-b border-[#E5E7EB] relative">
+        <button
+          type="button"
+          onClick={handleZipDownload}
+          className="absolute left-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-2 text-[15px] text-[#111]"
+        >
+          <img src="download.png" alt="download" className="h-3.5 w-3.5" />
+        </button>
+        <span className="text-[16px] font-semibold text-[#111]">&lt;code/&gt;</span>
+        <button
+          aria-label="close"
+          onClick={onClose}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-[28px] text-[#111] leading-none hover:opacity-70"
+        >
+          ×
+        </button>
       </div>
-    </Overlay>
+
+      {/* Tabs */}
+      <div className="h-9 flex items-center gap-2 px-3 overflow-x-auto bg-white border-b border-[#E5E7EB]custom-scroll">
+        {tabFiles.map((f, idx) => (
+          <button
+            key={`${f.name}-${idx}`}
+            type="button"
+            onClick={() => setActive(idx)}
+            className={`px-2.5 py-1.5 rounded-md text-[13px] shrink-0 ${
+              idx === active ? "bg-[#F2EA0E] text-black" : "text-[#111]"
+            }`}
+          >
+            {f.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Code area */}
+      <div className="flex-1 bg-[#0F0F0F] overflow-auto custom-scroll">
+        {shown?.code ? (
+          <div className="p-3">
+            <Markdown>{`\`\`\`${shown.lang || ""}\n${shown.code}\n\`\`\``}</Markdown>
+          </div>
+        ) : (
+          <div className="p-6 text-[#c7cbd2]">No code found in this message.</div>
+        )}
+      </div>
+    </div>
   );
 };
+
+
+
 
 const LiveModal = ({
   open,
@@ -892,7 +877,7 @@ const LiveModal = ({
 }) => {
   if (!open) return null;
   return (
-  <Overlay onClose={onClose}>
+ 
     <div className="w-[min(480px,92vw)] rounded-2xl bg-white text-[#222] shadow-2xl p-8 relative text-center">
       {/* Close button */}
       <button
@@ -958,7 +943,7 @@ const LiveModal = ({
         </div>
       )}
     </div>
-  </Overlay>
+  
 );
 
 };
@@ -1797,7 +1782,7 @@ function SurfersApp() {
                   aria-label="back"
                   className="fixed top-5 left-[20vw] lg:left-[20vw] z-10"
                 >
-                  <img src="/back.png" alt="back" className="h-4 w-4 rotate-315" />
+                  <img src="/backWhite.png" alt="back" className="h-3 w-7.5" />
                 </button>
               </div>
             </Container>
@@ -1845,17 +1830,18 @@ function SurfersApp() {
             aria-label="back"
             className="fixed top-5 left-[5vw] lg:left-[20vw] z-50"
           >
-            <img src="/back.png" alt="back" className="h-4 w-4 rotate-315" />
+            <img src="/backBlack.png" alt="back" className="h-3 w-7.5" />
           </button>
 
           {/* No logo or profile icon in chat header per request */}
-          <header className="pt-4 bg-[#0E0E0E]">
-            <Container>
-              <div className="h-[8px]" />
-            </Container>
-          </header>
+          <header className="fixed top-0 left-0 right-0 z-40 bg-black/10 backdrop-blur-md">
+  <Container>
+    <div className="h-[48px]" /> {/* adjust strip height */}
+  </Container>
+</header>
 
-          <main className="flex-1 bg-[#0E0E0E]">
+
+          <main className="flex-1 bg-[#FFF70F]">
             {/* Chat OUTPUT rail (5vw / 20vw margins). Prompt box is NOT inside this. */}
             <Rail className="pt-8 pb-40">
               {messages.map((m) => {
@@ -1885,9 +1871,9 @@ function SurfersApp() {
                     }}
                   >
                     <div
-                      className={`max-w-[560px] items-center rounded-2xl px-5.5 py-3
-                        mb-3.5 leading-6 ${
-                        isAssistant ? "bg-transparent text-[#FFFFFF]" : "bg-[#171717] text-[#FFFFFF]"
+                      className={`max-w-[560px] items-center rounded-2xl px-3.5 py-3
+                        mb-3.5 mt-5 leading-6 ${
+                        isAssistant ? "bg-transparent text-[#0A0A0A]" : "bg-[#F2EA0E] text-[#0A0A0A]"
                       }`}
                       style={{
                         overflowWrap: "anywhere",
@@ -1906,7 +1892,7 @@ function SurfersApp() {
                             {canShowInline && (
                               
                               <div className=" max-w-auto mx-auto items-center justify-center text-center mt-4">
-  <p className="text-[16px] font-regular mt-10 leading-5 text-[#FFFFFF] mb-3">
+  <p className="text-[16px] font-regular mt-10 leading-5 text-[#0A0A0A] mb-3">
    
 
     See the code, view to see the site or go live or ask surfers for anything.
@@ -1915,21 +1901,21 @@ function SurfersApp() {
     <button
       type="button"
       onClick={() => openCodeModal(m.id)}
-      className="flex-1 h-10 rounded-full font-medium bg-[#FFFFFF] text-[#2E2E2E]"
+      className="flex-1 h-10 rounded-full font-medium bg-[#0A0A0A] text-[#FFFFFF]"
     >
       code
     </button>
     <button
       type="button"
       onClick={() => openViewModal(m.id)}
-      className="flex-1 h-10 rounded-full font-medium bg-[#FFFFFF] text-[#2E2E2E]"
+      className="flex-1 h-10 rounded-full font-medium bg-[#0A0A0A] text-[#FFFFFF]"
     >
       view
     </button>
     <button
       type="button"
       onClick={() => openLiveModal(m.id)}
-      className="flex-1 h-10 rounded-full font-medium bg-[#FFFFFF] text-[#2E2E2E]"
+      className="flex-1 h-10 rounded-full font-medium bg-[#0A0A0A] text-[#FFFFFF]"
     >
       go live
     </button>
@@ -1940,7 +1926,7 @@ function SurfersApp() {
                           </>
                         ) : isStreaming ? (
                           <div
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full  text-[#FFFFFF] text-[15.5px]"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full  text-[#0A0A0A] text-[15.5px]"
                             aria-live="polite"
                           >
                             <Spinner />
@@ -1959,12 +1945,12 @@ function SurfersApp() {
           </main>
 
           {/* Chat PROMPT — exact copy of Home prompt box. Not inside Rail. */}
-          <div className="fixed left-0 right-0 bottom-0  from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6 bg-[#0E0E0E]">
+          <div className="fixed left-0 right-0 bottom-0  from-[#0B0B0C] via-[#0B0B0C]/90 to-transparent pt-6 pb-6 bg-[#FFF70F]">
             <Container>
              <form ref={chatFormRef} onSubmit={sendFromChat} className="w-full max-w-[560px] mx-auto">
 
                 <div
-                  className="relative ] border-[#4E4E4E] border-[1px] rounded-[32px] prompt-textarea
+                  className="relative ] bg-[#0A0A0A] rounded-[32px] prompt-textarea
                              px-[25px] pt-[15px] pb-[65px]
                              shadow-[0_12px_36px_rgba(0,0,0,0.45)]"
                 >
@@ -1980,7 +1966,7 @@ function SurfersApp() {
                         chatFormRef.current?.requestSubmit();
                       }
                     }}
-                    placeholder="idea? let's build that"
+                    placeholder="ideas? fantastic. "
                     className="w-full prompt-textchatarea outline-none text-[18px] leading-[20px] text-[#FFFFFF] resize-none break-all"
                    style={{ maxHeight: `${MAX_TA_HEIGHT}px`, overflowY: "hidden", overflowWrap: "anywhere" }}
              
@@ -2001,7 +1987,7 @@ function SurfersApp() {
 
                     <button
                       type="submit"
-                      className="h-[32px] w-[32px] rounded-full bg-[#FFFFFF] hover:bg-[#FFFFFF] text-[#0E0E0E] flex items-center justify-center transition-colors text-[24px]"
+                      className="h-[32px] w-[32px] rounded-full bg-[#FFFFFF] hover:bg-[#FFFFFF] text-[#0A0A0A] flex items-center justify-center transition-colors text-[24px]"
                       aria-label="send"
                     >
                       ↑
@@ -2035,26 +2021,41 @@ function SurfersApp() {
       )}
 
       {/* ===== MODALS ===== */}
+      {modal.type && (
+  <Overlay onClose={closeModal}>
+    {modal.type === "code" && (
       <CodeModal
-        open={modal.type === "code"}
+        open
         files={modal.files}
         lang={modal.lang}
         code={modal.code}
         onClose={closeModal}
       />
-      <ViewModal open={modal.type === "view"} url={modal.url} onClose={closeModal} />
+    )}
+    {modal.type === "view" && (
+      <ViewModal
+        open
+        url={modal.url}
+        onClose={closeModal}
+      />
+    )}
+    {modal.type === "live" && (
       <LiveModal
-  open={modal.type === "live"}
-  onClose={closeModal}
-  slug={liveSlug}
-  setSlug={setLiveSlug}
-  busy={liveBusy}
-  note={modal.note}
-  onPublish={publishCurrent}
-  avail={liveAvail}
-  liveUrl={liveResultUrl}
-  checkAvailability={checkAvailability}
-/>
+        open
+        onClose={closeModal}
+        slug={liveSlug}
+        setSlug={setLiveSlug}
+        busy={liveBusy}
+        note={modal.note}
+        onPublish={publishCurrent}
+        avail={liveAvail}
+        liveUrl={liveResultUrl}
+        checkAvailability={checkAvailability}
+      />
+    )}
+  </Overlay>
+)}
+
 
     </div>
   );

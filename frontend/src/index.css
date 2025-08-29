@@ -26,3 +26,9 @@ body {
   scrollbar-width: thin;
    scrollbar-color: #343434 transparent;
 }
+/* in your global CSS */
+.chat-output pre {
+  max-width: 100% !important; /* allow full stretch */
+  width: 100% !important;
+}
+

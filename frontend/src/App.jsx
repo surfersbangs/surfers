@@ -191,7 +191,7 @@ function CodeBlock({ inline, className, children, ...props }) {
   }
 
   return (
-  <pre className="overflow-x-auto bg-[#0E0E0E] rounded-lg p-3 custom-scroll">
+  <pre className="h-full overflow-x-auto bg-[#0E0E0E] p-3 custom-scroll rounded-xl">
   <code
     ref={codeRef}
     style={{ background: "#0A0A0A", borderRadius: 30 }}
@@ -847,9 +847,9 @@ const CodeModal = ({ open, files = [], lang, code, onClose }) => {
       </div>
 
       {/* Code area */}
-      <div className="flex-1 bg-[#0F0F0F] overflow-auto custom-scroll">
+      <div className="flex-1 bg-[#0F0F0F]  flex flex-col">
         {shown?.code ? (
-          <div className="p-3">
+          <div className="flex-1 overflow-auto custom-scroll">
             <Markdown>{`\`\`\`${shown.lang || ""}\n${shown.code}\n\`\`\``}</Markdown>
           </div>
         ) : (
@@ -1871,7 +1871,7 @@ function SurfersApp() {
                     }}
                   >
                     <div
-                      className={`max-w-[560px] items-center rounded-2xl px-3.5 py-3
+                      className={`max-w-[625px] items-center rounded-2xl px-3.5 py-3
                         mb-3.5 mt-5 leading-6 ${
                         isAssistant ? "bg-transparent text-[#0A0A0A]" : "bg-[#F2EA0E] text-[#0A0A0A]"
                       }`}
